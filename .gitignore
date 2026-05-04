@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+cs2-ledger
+cs2-ledger.exe
+
+# Wails generated
+frontend/wailsjs/
+wailsbindings/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.test
+*.out
+vendor/
+
+# Frontend env
+frontend/.env.local
+frontend/.env.*.local
+
+# Data (never commit local database)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Archive
+*.zip
+*.tar.gz
