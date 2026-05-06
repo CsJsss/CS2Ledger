@@ -27,6 +27,9 @@ Thumbs.db
 *.out
 vendor/
 
+# Wails cache
+frontend/package.json.md5
+
 # Frontend env
 frontend/.env.local
 frontend/.env.*.local

@@ -1,0 +1,31 @@
+FROM golang:1.25-bookworm AS build
+
+# Install Node.js 22 (for frontend build)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MinGW-w64 for Windows cross-compilation
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        mingw-w64 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Wails CLI
+RUN go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN cd frontend && npm ci && cd ..
+
+ENV CC=x86_64-w64-mingw32-gcc
+ENV CGO_ENABLED=1
+RUN wails build -platform windows/amd64 && mkdir -p /out && cp build/bin/cs2-ledger.exe /out/cs2-ledger.exe
+
+FROM scratch
+COPY --from=build /out/cs2-ledger.exe /cs2-ledger.exe

@@ -1,0 +1,41 @@
+version: 2
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - unparam
+    - prealloc
+  exclusions:
+    paths:
+      - frontend/node_modules
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    paths:
+      - frontend/node_modules
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  goimports:
+    local-prefixes: cs2-ledger
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

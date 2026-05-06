@@ -1,0 +1,10 @@
+# CS2 Ledger configuration
+# All fields are optional — remove a key to use the default value.
+
+log:
+  level: info # debug | info | warn | error
+
+# db:
+#   dsn: "file:data.db"
+#   wal_mode: true
+#   busy_timeout: 5000

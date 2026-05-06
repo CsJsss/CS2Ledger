@@ -1,0 +1,33 @@
+pre-commit:
+  parallel: true
+  commands:
+    goimports:
+      glob: "*.go"
+      run: go tool goimports -w -local cs2-ledger {staged_files}
+      stage_fixed: true
+
+    golangci-lint:
+      glob: "*.go"
+      run: go tool golangci-lint run --new-from-rev=HEAD~1 --timeout=2m
+      fail_text: "golangci-lint found issues"
+
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        msg=$(git log --format=%B -1)
+        if ! echo "$msg" | grep -qE '^(feat|fix|refactor|chore|docs|test|ci|style)'; then
+          echo "Commit message must start with a conventional commit type: feat, fix, refactor, chore, docs, test, ci, style"
+          exit 1
+        fi
+
+pre-push:
+  parallel: true
+  commands:
+    vet:
+      run: go vet ./...
+      fail_text: "go vet found issues"
+
+    test:
+      run: go test ./... -count=1
+      fail_text: "Tests failed"
