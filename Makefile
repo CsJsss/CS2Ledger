@@ -12,10 +12,10 @@ help: ## Display this help.
 ##@ Setup
 
 .PHONY: setup
-setup: ## Install all dev tools, dependencies, and git hooks.
+setup: install-wails ## Install all dev tools, dependencies, and git hooks.
 	go mod download
+	go install tool
 	cd frontend && npm ci
-	npx lefthook install
 
 .PHONY: install-wails
 install-wails: ## Install Wails CLI (optional, for wails dev / wails build).
