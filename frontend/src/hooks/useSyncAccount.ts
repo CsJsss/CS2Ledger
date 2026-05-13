@@ -4,7 +4,8 @@ import { SyncAccount } from "../lib/wails";
 export function useSyncAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (accountId: number) => SyncAccount(accountId),
+    mutationFn: (params: { accountId: number }) =>
+      SyncAccount(params.accountId),
     onSuccess: (result) => {
       if (result.NewTrades > 0) {
         void queryClient.invalidateQueries({ queryKey: ["completedTrades"] });

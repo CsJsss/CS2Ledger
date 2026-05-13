@@ -14,6 +14,7 @@ type Config struct {
 
 type LogConfig struct {
 	Level string `yaml:"level"`
+	Path  string `yaml:"path"`
 }
 
 type DBConfig struct {

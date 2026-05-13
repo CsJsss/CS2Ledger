@@ -1,18 +1,16 @@
 package igxe
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
-	"github.com/CsJsss/CS2Ledger/pkg/utils"
+	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
 type Client struct {
@@ -22,21 +20,21 @@ type Client struct {
 }
 
 // New accepts credential in format "partnerId:privateKeyPEM".
-func New(credential string) (*Client, error) {
+func New(credential string, logger *logfx.Logger) (*Client, error) {
 	idx := strings.Index(credential, ":")
 	if idx < 0 {
 		return nil, fmt.Errorf("igxe: credential must be in format partnerId:privateKeyPEM")
 	}
-	return newWithParts(credential[:idx], credential[idx+1:])
+	return newWithParts(credential[:idx], credential[idx+1:], logger)
 }
 
-func newWithParts(partnerID, privateKeyPEM string) (*Client, error) {
+func newWithParts(partnerID, privateKeyPEM string, logger *logfx.Logger) (*Client, error) {
 	privateKey, err := parsePrivateKey(privateKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("igxe: %w", err)
 	}
 	return &Client{
-		BaseClient: platform.NewBaseClient(utils.PlatformIGXE, "https://openapi.ecosteam.cn"),
+		BaseClient: platform.NewBaseClient(platform.PlatformIGXE, "https://openapi.ecosteam.cn", logger),
 		partnerID:  partnerID,
 		privateKey: privateKey,
 	}, nil
@@ -44,36 +42,53 @@ func newWithParts(partnerID, privateKeyPEM string) (*Client, error) {
 
 func (c *Client) Verify(ctx context.Context) error {
 	c.Log.Info("igxe: verifying")
-	_, err := c.getTotalMoney(ctx)
+	_, body, err := c.doRequest(ctx, "POST", "/Api/Merchant/GetTotalMoney", nil, nil)
 	if err != nil {
 		c.Log.Warn("igxe: verify failed", "err", err)
 		return fmt.Errorf("igxe verify: %w", err)
+	}
+
+	var result totalMoneyResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("igxe verify: %w", err)
+	}
+	if result.ResultCode != "0" {
+		return fmt.Errorf("igxe verify: resultCode=%s", result.ResultCode)
 	}
 	c.Log.Info("igxe: verify ok")
 	return nil
 }
 
-func (c *Client) FetchBalance(ctx context.Context) (*platform.Balance, error) {
+func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	c.Log.Info("igxe: fetching balance")
-	data, err := c.getTotalMoney(ctx)
+	_, body, err := c.doRequest(ctx, "POST", "/Api/Merchant/GetTotalMoney", nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("igxe balance: %w", err)
 	}
+
+	var result totalMoneyResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("igxe balance: %w", err)
+	}
+	if result.ResultCode != "0" {
+		return nil, fmt.Errorf("igxe balance: resultCode=%s", result.ResultCode)
+	}
 	return &platform.Balance{
-		Available: int64(data.ResultData.Money * 100),
+		Available: result.ResultData.Money,
 		Purchase:  0,
 	}, nil
 }
 
-func (c *Client) FetchBuyHistory(ctx context.Context, since int64) ([]platform.TradeRecord, error) {
+func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
 	return []platform.TradeRecord{}, nil
 }
 
-func (c *Client) FetchSellHistory(ctx context.Context, since int64) ([]platform.TradeRecord, error) {
-	c.Log.Info("igxe: fetching sell history", "since", since)
-	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "sell", 1*time.Second,
+func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
+	cfg := platform.ApplyQueryOpts(opts)
+	c.Log.Info("igxe: fetching sell history", "since", cfg.Since)
+	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "sell", 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchSellPage(ctx, page, since)
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -83,31 +98,23 @@ func (c *Client) FetchSellHistory(ctx context.Context, since int64) ([]platform.
 	return trades, nil
 }
 
-func (c *Client) getTotalMoney(ctx context.Context) (*totalMoneyResponse, error) {
-	body := map[string]any{}
-	var result totalMoneyResponse
-	if err := c.doPOST(ctx, "/Api/Merchant/GetTotalMoney", body, &result); err != nil {
-		return nil, err
-	}
-	if result.ResultCode != "0" {
-		return nil, fmt.Errorf("API error: resultCode=%s", result.ResultCode)
-	}
-	return &result, nil
-}
-
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64) ([]platform.TradeRecord, bool, error) {
-	startTime := time.UnixMilli(since).Format("2006-01-02")
-	endTime := time.Now().Format("2006-01-02")
-
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
-		"StartTime": startTime,
-		"EndTime":   endTime,
+		"StartTime": time.Now().Add(-30 * 24 * time.Hour).Format("2006-01-02"),
+		"EndTime":   time.Now().Format("2006-01-02"),
 		"PageIndex": page,
 		"PageSize":  100,
 	}
+	for k, v := range extra {
+		body[k] = v
+	}
+	_, respBody, err := c.doRequest(ctx, "POST", "/Api/open/order/SellerOrderList", nil, body)
+	if err != nil {
+		return nil, false, err
+	}
 
 	var result sellerOrderListResponse
-	if err := c.doPOST(ctx, "/Api/open/order/SellerOrderList", body, &result); err != nil {
+	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, false, err
 	}
 	if result.ResultCode != "0" {
@@ -115,25 +122,21 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64) ([]pl
 	}
 
 	trades := make([]platform.TradeRecord, 0, len(result.ResultData.PageResult))
+	anyAfterSince := false
 	for _, item := range result.ResultData.PageResult {
 		tradeAt := c.parseCreateDate(item.CreateDate)
+		if tradeAt >= since {
+			anyAfterSince = true
+		}
 		if tradeAt < since {
 			continue
 		}
-		price := int64(item.Price * 100)
-		trades = append(trades, platform.TradeRecord{
-			ExternalID: fmt.Sprintf("igxe-sell-%s", item.OrderNum),
-			AssetID:    item.AssetID,
-			ItemName:   item.GoodsName,
-			TradeType:  "sell",
-			Quantity:   1,
-			UnitPrice:  price,
-			TotalPrice: price,
-			Fee:        0,
-			TradeAt:    tradeAt,
-		})
+		trades = append(trades, toSellTrade(item, tradeAt))
 	}
 
+	if len(result.ResultData.PageResult) > 0 && !anyAfterSince {
+		return trades, false, nil
+	}
 	hasMore := len(result.ResultData.PageResult) >= 100
 	return trades, hasMore, nil
 }
@@ -155,40 +158,27 @@ func (c *Client) parseCreateDate(s string) int64 {
 	return 0
 }
 
-func (c *Client) doPOST(ctx context.Context, path string, body map[string]any, result any) error {
+func (c *Client) headers() http.Header {
+	h := http.Header{}
+	h.Set("Content-Type", "application/json")
+	h.Set("User-Agent", "CS2Ledger")
+	return h
+}
+
+//nolint:unparam // unified signature — status code not always checked by callers
+func (c *Client) doRequest(ctx context.Context, method, path string, query map[string]string, body map[string]any) (int, []byte, error) {
+	if body == nil {
+		body = map[string]any{}
+	}
 	body["PartnerId"] = c.partnerID
 	body["Timestamp"] = time.Now().Unix()
 
 	sign, err := generateRSASignature(c.privateKey, body)
 	if err != nil {
-		return fmt.Errorf("sign error: %w", err)
+		return 0, nil, fmt.Errorf("sign error: %w", err)
 	}
 	body["Sign"] = sign
 
-	data, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "CS2Ledger")
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	c.Log.Debug("igxe API response", "path", path, "status", resp.StatusCode, "body", string(respBody))
-
-	return json.Unmarshal(respBody, result)
+	bodyBytes, _ := json.Marshal(body)
+	return c.DoRequest(ctx, method, path, query, bodyBytes, c.headers())
 }

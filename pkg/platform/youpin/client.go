@@ -1,18 +1,22 @@
 package youpin
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
-	"github.com/CsJsss/CS2Ledger/pkg/utils"
+	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
+)
+
+const (
+	DefaultPageSize int = 20
 )
 
 type Client struct {
@@ -20,47 +24,66 @@ type Client struct {
 	token       string
 	deviceToken string
 	deviceID    string
-	ukValue     string
-	ukTime      time.Time
 	userID      int64
+	rateLimiter chan struct{}
+	initOnce    sync.Once
 }
 
-func New(token string) *Client {
+func New(token string, logger *logfx.Logger) *Client {
 	dev := randomString(24)
-	c := &Client{
-		BaseClient:  platform.NewBaseClient(utils.PlatformYoupin, "https://api.youpin898.com"),
+	limiter := make(chan struct{}, 3)
+	for i := 0; i < 3; i++ {
+		limiter <- struct{}{}
+	}
+	go func() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		defer ticker.Stop()
+		for range ticker.C {
+			select {
+			case limiter <- struct{}{}:
+			default:
+			}
+		}
+	}()
+	return &Client{
+		BaseClient:  platform.NewBaseClient(platform.PlatformYoupin, "https://api.youpin898.com", logger),
 		token:       token,
 		deviceToken: dev,
 		deviceID:    dev,
+		rateLimiter: limiter,
 	}
-	c.init()
-	return c
 }
 
-// init registers the device with YouPin.
-func (c *Client) init() {
-	var result struct {
-		Code int `json:"Code"`
-	}
-	if err := c.doGET(context.Background(), "/api/common/ClientInfo/AndroidInfo", map[string]string{
-		"DeviceToken": c.deviceToken,
-		"Sessionid":   c.deviceToken,
-	}, &result); err != nil {
-		c.Log.Warn("youpin: init device info failed", "err", err)
-		return
-	}
-	c.Log.Debug("youpin: init device info ok", "code", result.Code)
+// registerDevice registers the device token with YouPin.
+func (c *Client) registerDevice() {
+	c.initOnce.Do(func() {
+		var result struct {
+			Code int `json:"Code"`
+		}
+		if err := c.call(context.Background(), "GET", "/api/common/ClientInfo/AndroidInfo", map[string]string{
+			"DeviceToken": c.deviceToken,
+			"Sessionid":   c.deviceToken,
+		}, nil, &result); err != nil {
+			c.Log.Warn("youpin: init device info failed", "err", err)
+		}
+	})
 }
 
 func (c *Client) Verify(ctx context.Context) error {
+	c.registerDevice()
+	_, body, err := c.doRequest(ctx, "GET", "/api/user/Account/getUserInfo", nil, nil)
+	if err != nil {
+		c.Log.Warn("youpin verify failed", "err", err)
+		return fmt.Errorf("youpin verify: %w", err)
+	}
+
 	var result struct {
 		Code int `json:"Code"`
 		Data struct {
 			UserID int64 `json:"UserId"`
 		} `json:"Data"`
 	}
-	if err := c.doGET(ctx, "/api/user/Account/getUserInfo", nil, &result); err != nil {
-		c.Log.Warn("youpin verify failed", "err", err)
+	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("youpin verify: %w", err)
 	}
 	if result.Code != 0 {
@@ -72,11 +95,13 @@ func (c *Client) Verify(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) FetchBuyHistory(ctx context.Context, since int64) ([]platform.TradeRecord, error) {
-	c.Log.Debug("youpin: fetching buy history", "since", since)
-	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "buy", 1*time.Second,
+func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
+	c.registerDevice()
+	cfg := platform.ApplyQueryOpts(opts)
+	c.Log.Debug("youpin: fetching buy history", "since", cfg.Since)
+	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionBuy, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchBuyPage(ctx, page, since)
+			return c.fetchBuyPage(ctx, page, cfg.Since, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -86,19 +111,26 @@ func (c *Client) FetchBuyHistory(ctx context.Context, since int64) ([]platform.T
 	return trades, nil
 }
 
-func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
 		"keys":        "",
 		"orderStatus": 340,
 		"pageIndex":   page,
-		"pageSize":    20,
+		"pageSize":    DefaultPageSize,
 		"presenterId": 0,
 		"sceneType":   0,
 		"Sessionid":   c.deviceID,
 	}
+	for k, v := range extra {
+		body[k] = v
+	}
+	_, respBody, err := c.doRequest(ctx, "POST", "/api/youpin/bff/trade/sale/v1/buy/list", nil, body)
+	if err != nil {
+		return nil, false, err
+	}
 
 	var result youpinBuyPageResponse
-	if err := c.doPOST(ctx, "/api/youpin/bff/trade/sale/v1/buy/list", body, &result); err != nil {
+	if err := json.Unmarshal(respBody, &result); err != nil {
 		c.Log.Warn("youpin buy page failed", "page", page, "err", err)
 		return nil, false, err
 	}
@@ -110,77 +142,71 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64) ([]pla
 	c.Log.Debug("youpin buy page", "page", page, "orders", len(result.Data.OrderList), "totalCount", result.Data.TotalCount)
 
 	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
+	finished := false
 	for _, o := range result.Data.OrderList {
 		if o.OrderStatusName != "已完成" {
 			continue
 		}
 		if o.FinishOrderTime < since {
+			finished = true
 			continue
 		}
 		// Batch orders (commodityNum > 3) need a separate detail API call.
 		if o.CommodityNum > 3 {
-			batchTrades, err := c.fetchBuyBatch(ctx, o.ID, o.BuyerUserID)
+			batchTrades, err := c.fetchBuyBatch(ctx, o.ID, o.BuyerUserID, o.FinishOrderTime)
 			if err != nil {
-				c.Log.Warn("youpin buy batch failed", "orderID", o.ID, "err", err)
-				continue
+				return nil, false, fmt.Errorf("youpin buy batch %s: %w", o.ID, err)
 			}
 			trades = append(trades, batchTrades...)
 			continue
 		}
 		for _, p := range o.ProductList {
-			trades = append(trades, c.buildBuyTrade(o, p))
+			trades = append(trades, toBuyTrade(o, p))
 		}
 	}
 
-	hasMore := page*20 < result.Data.TotalCount
-	return trades, hasMore, nil
+	if len(result.Data.OrderList) == 0 || finished {
+		return trades, false, nil
+	}
+	// API may return null total; fall back to page-full heuristic.
+	if result.Data.TotalCount > 0 {
+		return trades, page*DefaultPageSize < result.Data.TotalCount, nil
+	}
+	return trades, len(result.Data.OrderList) == DefaultPageSize, nil
 }
 
-func (c *Client) buildBuyTrade(o youpinBuyOrder, p youpinBuyProduct) platform.TradeRecord {
-	// AssetID: prefer assertId, fallback to commodityId.
-	assetID := fmt.Sprintf("%d", p.AssertID)
-	if p.AssertID == 0 {
-		assetID = fmt.Sprintf("%d", p.CommodityID)
-	}
-
-	return platform.TradeRecord{
-		ExternalID: fmt.Sprintf("youpin-buy-%d-%d", o.OrderID, p.AssertID),
-		AssetID:    assetID,
-		ItemName:   p.CommodityName,
-		TradeType:  "buy",
-		Quantity:   1,
-		UnitPrice:  p.Price,
-		TotalPrice: p.Price,
-		Fee:        0,
-		TradeAt:    o.FinishOrderTime,
-	}
-}
-
-func (c *Client) fetchBuyBatch(ctx context.Context, orderID int64, buyerUserID int64) ([]platform.TradeRecord, error) {
+func (c *Client) fetchBuyBatch(ctx context.Context, orderNo string, buyerUserID int64, finishTime int64) ([]platform.TradeRecord, error) {
 	body := map[string]any{
-		"orderNo":   fmt.Sprintf("%d", orderID),
+		"orderNo":   orderNo,
 		"userId":    buyerUserID,
 		"Sessionid": c.deviceID,
 	}
 
 	type commodityVO struct {
-		ID     int64   `json:"id"`
-		Name   string  `json:"name"`
-		Price  float64 `json:"price"`
-		Abrade string  `json:"abrade"`
+		ID              int64       `json:"id"`
+		Name            string      `json:"name"`
+		Price           json.Number `json:"price"`
+		CommodityAmount json.Number `json:"commodityAmount"`
+		Abrade          string      `json:"abrade"`
+		CommodityAbrade string      `json:"commodityAbrade"`
+		ExteriorName    string      `json:"exteriorName"`
+		RarityName      string      `json:"rarityName"`
+		ItemSetName     string      `json:"itemSetName"`
+		TypeName        string      `json:"typeName"`
+		PaintIndex      int         `json:"paintIndex"`
+		PaintSeed       int         `json:"paintSeed"`
 	}
 
 	var result struct {
 		Code int `json:"code"`
 		Data struct {
-			OrderCanceledTime   int64 `json:"orderCanceledTime"`
 			UserCommodityVOList []struct {
 				CommodityVOList []commodityVO `json:"commodityVOList"`
 			} `json:"userCommodityVOList"`
 		} `json:"data"`
 	}
 
-	if err := c.doPOST(ctx, "/api/youpin/bff/trade/v1/order/query/detail", body, &result); err != nil {
+	if err := c.call(ctx, "POST", "/api/youpin/bff/trade/v1/order/query/detail", nil, body, &result); err != nil {
 		return nil, err
 	}
 	if result.Code != 0 {
@@ -190,29 +216,48 @@ func (c *Client) fetchBuyBatch(ctx context.Context, orderID int64, buyerUserID i
 	var trades []platform.TradeRecord
 	if len(result.Data.UserCommodityVOList) > 0 {
 		for _, commodity := range result.Data.UserCommodityVOList[0].CommodityVOList {
-			// Batch detail API returns price in yuan; TradeRecord stores fen.
-			priceFen := int64(commodity.Price * 100)
+			priceVal, _ := commodity.Price.Float64()
+			priceFen := int64(priceVal * 100)
+			totalPriceFen := priceFen
+			if ca, _ := commodity.CommodityAmount.Float64(); ca > 0 {
+				totalPriceFen = int64(ca * 100)
+			}
+			wear := commodity.CommodityAbrade
+			if wear == "" {
+				wear = commodity.Abrade
+			}
+			name, ext := platform.NormalizeItemName(commodity.Name)
+			exterior := commodity.ExteriorName
+			if exterior == "" {
+				exterior = ext
+			}
 			trades = append(trades, platform.TradeRecord{
-				ExternalID: fmt.Sprintf("youpin-buy-%d-%d", orderID, commodity.ID),
-				AssetID:    fmt.Sprintf("%d", commodity.ID),
-				ItemName:   commodity.Name,
-				TradeType:  "buy",
+				ExternalID: fmt.Sprintf("youpin-buy-%s-%d", orderNo, commodity.ID),
+				CS2Item: model.CS2Item{
+					AssetID: fmt.Sprintf("%d", commodity.ID), ItemName: name,
+					Exterior: exterior, PaintWear: parseWear(wear),
+					Rarity: commodity.RarityName, WeaponType: commodity.TypeName, Itemset: commodity.ItemSetName,
+					PaintSeed: commodity.PaintSeed, PaintIndex: commodity.PaintIndex,
+				},
+				TradeType:  model.DirectionBuy,
 				Quantity:   1,
 				UnitPrice:  priceFen,
-				TotalPrice: priceFen,
+				TotalPrice: totalPriceFen,
 				Fee:        0,
-				TradeAt:    result.Data.OrderCanceledTime,
+				TradeAt:    finishTime,
 			})
 		}
 	}
 	return trades, nil
 }
 
-func (c *Client) FetchSellHistory(ctx context.Context, since int64) ([]platform.TradeRecord, error) {
-	c.Log.Debug("youpin: fetching sell history", "since", since)
-	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "sell", 1*time.Second,
+func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
+	c.registerDevice()
+	cfg := platform.ApplyQueryOpts(opts)
+	c.Log.Debug("youpin: fetching sell history", "since", cfg.Since)
+	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionSell, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchSellPage(ctx, page, since)
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -222,16 +267,24 @@ func (c *Client) FetchSellHistory(ctx context.Context, since int64) ([]platform.
 	return trades, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
 		"keys":        "",
-		"orderStatus": "340",
+		"orderStatus": 340,
 		"pageIndex":   page,
-		"pageSize":    20,
+		"pageSize":    DefaultPageSize,
+		"Sessionid":   c.deviceID,
+	}
+	for k, v := range extra {
+		body[k] = v
+	}
+	_, respBody, err := c.doRequest(ctx, "POST", "/api/youpin/bff/trade/sale/v1/sell/list", nil, body)
+	if err != nil {
+		return nil, false, err
 	}
 
 	var result youpinSellPageResponse
-	if err := c.doPOST(ctx, "/api/youpin/bff/trade/sale/v1/sell/list", body, &result); err != nil {
+	if err := json.Unmarshal(respBody, &result); err != nil {
 		c.Log.Warn("youpin sell page failed", "page", page, "err", err)
 		return nil, false, err
 	}
@@ -243,161 +296,94 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64) ([]pl
 	c.Log.Debug("youpin sell page", "page", page, "orders", len(result.Data.OrderList), "totalCount", result.Data.TotalCount)
 
 	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
+	finished := false
 	for _, o := range result.Data.OrderList {
-		if o.FinishOrderTime < since {
+		if o.OrderStatusName != "已完成" {
 			continue
 		}
-		qty := int64(o.CommodityNum)
-		if qty == 0 {
-			qty = 1
+		if o.FinishOrderTime < since {
+			finished = true
+			continue
 		}
-		trades = append(trades, platform.TradeRecord{
-			ExternalID: fmt.Sprintf("youpin-sell-%s", o.OrderNo),
-			AssetID:    fmt.Sprintf("%d", o.ProductDetail.AssertID),
-			ItemName:   o.ProductDetail.CommodityName,
-			TradeType:  "sell",
-			Quantity:   qty,
-			UnitPrice:  o.PaymentAmount / qty,
-			TotalPrice: o.PaymentAmount,
-			Fee:        0,
-			TradeAt:    o.FinishOrderTime,
-		})
+		trades = append(trades, toSellTrade(o))
 	}
 
-	hasMore := page*20 < result.Data.TotalCount
-	return trades, hasMore, nil
+	if len(result.Data.OrderList) == 0 || finished {
+		return trades, false, nil
+	}
+	// API may return null total
+	return trades, len(result.Data.OrderList) == DefaultPageSize, nil
 }
 
-func (c *Client) FetchBalance(ctx context.Context) (*platform.Balance, error) {
+func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
+	c.registerDevice()
 	return &platform.Balance{}, nil
 }
 
-// setHeaders sets all YouPin API headers. If pcPlatform is true, uses PC platform
-// instead of Android. If ukVerify is true, ensures a fresh UK (30s TTL) is present.
-func (c *Client) setHeaders(req *http.Request, pcPlatform, ukVerify bool) {
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("User-Agent", "okhttp/3.14.9")
-	req.Header.Set("App-Version", "5.28.3")
-	req.Header.Set("AppType", "4")
-	req.Header.Set("deviceType", "1")
-	req.Header.Set("package-type", "uuyp")
-	req.Header.Set("DeviceToken", c.deviceToken)
-	req.Header.Set("DeviceId", c.deviceID)
-	req.Header.Set("Gameid", "730")
+// ---------------------------------------------------------------------------
+// HTTP helpers
+// ---------------------------------------------------------------------------
 
-	if pcPlatform {
-		req.Header.Set("platform", "pc")
-	} else {
-		req.Header.Set("platform", "android")
+// doRequest enforces rate limiting then delegates to BaseClient.DoRequest.
+func (c *Client) doRequest(ctx context.Context, method, path string, query map[string]string, reqBody map[string]any) (int, []byte, error) {
+	select {
+	case <-c.rateLimiter:
+	case <-ctx.Done():
+		return 0, nil, ctx.Err()
 	}
 
-	if ukVerify {
-		c.refreshUKIfNeeded()
-		req.Header.Set("uk", c.ukValue)
+	var bodyBytes []byte
+	if reqBody != nil {
+		bodyBytes, _ = json.Marshal(reqBody)
 	}
+	return c.DoRequest(ctx, method, path, query, bodyBytes, c.headers())
+}
+
+// call makes an HTTP request, checks for errors, and unmarshals the response.
+func (c *Client) call(ctx context.Context, method, path string, query map[string]string, reqBody map[string]any, result any) error {
+	statusCode, body, err := c.doRequest(ctx, method, path, query, reqBody)
+	if err != nil {
+		return err
+	}
+	if statusCode >= 400 {
+		return fmt.Errorf("youpin API returned HTTP %d: %s", statusCode, string(body))
+	}
+	if err := c.checkAPIError(body); err != nil {
+		return err
+	}
+	return json.Unmarshal(body, result)
+}
+
+func (c *Client) headers() http.Header {
+	h := http.Header{}
+	h.Set("Authorization", "Bearer "+strings.TrimSpace(c.token))
+	h.Set("Content-Type", "application/json; charset=utf-8")
+	h.Set("User-Agent", "okhttp/3.14.9")
+	h.Set("App-Version", "5.28.3")
+	h.Set("AppType", "4")
+	h.Set("deviceType", "1")
+	h.Set("package-type", "uuyp")
+	h.Set("DeviceToken", c.deviceToken)
+	h.Set("DeviceId", c.deviceID)
+	h.Set("Gameid", "730")
+	h.Set("platform", "android")
 
 	deviceInfo := fmt.Sprintf(
 		`{"deviceId":"%s","deviceType":"%s","hasSteamApp":1,"requestTag":"%s","systemName":"Android","systemVersion":"15"}`,
 		c.deviceID, c.deviceID, strings.ToUpper(randomString(32)),
 	)
-	req.Header.Set("Device-Info", deviceInfo)
-}
-
-// refreshUKIfNeeded fetches a fresh UK from /api/deviceW2 if the cached one is
-// older than 30 seconds.
-func (c *Client) refreshUKIfNeeded() {
-	if c.ukValue != "" && time.Since(c.ukTime) < 30*time.Second {
-		return
-	}
-
-	uk, err := c.fetchUK()
-	if err != nil {
-		c.Log.Warn("youpin: fetch UK failed, using random", "err", err)
-		c.ukValue = randomString(65)
-		c.ukTime = time.Time{}
-		return
-	}
-	c.ukValue = uk
-	c.ukTime = time.Now()
-	c.Log.Debug("youpin: UK refreshed", "expires_in", "30s")
-}
-
-func (c *Client) doGET(ctx context.Context, path string, query map[string]string, result any) error {
-	url := c.BaseURL + path
-	if len(query) > 0 {
-		params := make([]string, 0, len(query))
-		for k, v := range query {
-			params = append(params, k+"="+v)
-		}
-		url += "?" + strings.Join(params, "&")
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return err
-	}
-	c.setHeaders(req, false, false)
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("read body: %w", err)
-	}
-	c.Log.Debug("youpin API response", "method", "GET", "path", path, "status", resp.StatusCode, "body", string(respBody))
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("youpin API returned HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
-	if err := c.checkAPIError(respBody); err != nil {
-		return err
-	}
-	return json.Unmarshal(respBody, result)
-}
-
-func (c *Client) doPOST(ctx context.Context, path string, body map[string]any, result any) error {
-	data, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, "POST", c.BaseURL+path, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	c.setHeaders(req, false, false)
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("read body: %w", err)
-	}
-	c.Log.Debug("youpin API response", "method", "POST", "path", path, "status", resp.StatusCode, "body", string(respBody))
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("youpin API returned HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
-	if err := c.checkAPIError(respBody); err != nil {
-		return err
-	}
-	return json.Unmarshal(respBody, result)
+	h.Set("Device-Info", deviceInfo)
+	return h
 }
 
 // checkAPIError checks for known YouPin error codes in the response.
-// Handles both "code" and "Code" since the API is inconsistent.
 func (c *Client) checkAPIError(body []byte) error {
 	var resp struct {
 		Code  int `json:"Code"`
 		CodeL int `json:"code"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil // can't parse, let the caller handle
+		return nil
 	}
 
 	code := resp.Code
@@ -411,13 +397,23 @@ func (c *Client) checkAPIError(body []byte) error {
 	case 84104:
 		return fmt.Errorf("youpin: 风控限制，暂时无法访问 (rate limited)")
 	case 9004001:
-		// Empty list — not an error, just no data.
 		return nil
 	}
 	if code != 0 {
 		c.Log.Warn("youpin: API returned non-zero code", "code", code)
 	}
 	return nil
+}
+
+func parseWear(s string) float64 {
+	if s == "" {
+		return 0
+	}
+	var v float64
+	if _, err := fmt.Sscanf(s, "%f", &v); err == nil {
+		return v
+	}
+	return 0
 }
 
 func randomString(n int) string {

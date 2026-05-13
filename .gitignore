@@ -7,6 +7,9 @@ build/
 cs2-ledger
 cs2-ledger.exe
 
+# data
+data/
+
 # Wails generated
 frontend/wailsjs/
 wailsbindings/

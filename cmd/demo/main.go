@@ -108,7 +108,7 @@ func listTrades(svc trade.TradeInterface) {
 	}
 	fmt.Printf("%-4s %-30s %-8s %-8s\n", "ID", "Item", "NetPL", "Fee")
 	for _, t := range trades {
-		fmt.Printf("%-4d %-30s %-8d %-8d\n", t.SellTradeID, t.ItemName, t.NetPl, t.TotalFee)
+		fmt.Printf("%-4d %-30s %-8d %-8d\n", t.SellTrade.ID, t.ItemName, t.NetPl, t.TotalFee)
 	}
 }
 

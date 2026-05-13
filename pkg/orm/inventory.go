@@ -12,7 +12,7 @@ import (
 func (o *ormImpl) UpsertInventory(item *model.InventoryItem) error {
 	return o.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "account_id"}, {Name: "asset_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"item_name", "status", "listed_price", "listed_at", "exterior", "paint_seed", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"item_name", "quantity", "status", "listed_price", "listed_at", "exterior", "paint_seed", "updated_at"}),
 	}).Create(item).Error
 }
 
@@ -27,13 +27,13 @@ func (o *ormImpl) FindInventoryByAccount(accountID uint, status string) ([]model
 	if status != "" {
 		q = q.Where("status = ?", status)
 	}
-	err := q.Order("updated_at DESC").Find(&items).Error
+	err := q.Preload("BuyTrade").Order("updated_at DESC").Find(&items).Error
 	return items, err
 }
 
 func (o *ormImpl) FindInventoryByAssetID(accountID uint, assetID string) (*model.InventoryItem, error) {
 	var item model.InventoryItem
-	err := o.db.Where("account_id = ? AND asset_id = ?", accountID, assetID).First(&item).Error
+	err := o.db.Where("account_id = ? AND asset_id = ?", accountID, assetID).Preload("BuyTrade").First(&item).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

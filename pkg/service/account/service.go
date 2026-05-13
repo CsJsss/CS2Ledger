@@ -39,7 +39,7 @@ func (s *service) Create(name, platform, cookie string) (*model.Account, error) 
 		Name:     name,
 		Platform: platform,
 		Cookie:   cookie,
-		Status:   "active",
+		Status:   orm.AccountStatusActive,
 	}
 	if err := s.orm.CreateAccount(a); err != nil {
 		return nil, err

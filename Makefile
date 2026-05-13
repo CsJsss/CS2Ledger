@@ -61,6 +61,14 @@ build-windows: lint test ## Build Windows production binary.
 build-dev-windows: ## Build Windows development binary.
 	CC=x86_64-w64-mingw32-gcc wails build -platform windows/amd64 -debug
 
+define build
+	go build -o build/bin/$(1) ./cmd/$(1)/
+endef
+
+.PHONY: build-platform-cli
+build-platform-cli: ## Build platform-cli → build/bin/.
+	$(call build,platform-cli)
+
 .PHONY: frontend
 frontend: ## Build frontend assets only.
 	cd frontend && npm ci && npm run build

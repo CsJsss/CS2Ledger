@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
 func TestClient_FetchBuyHistory(t *testing.T) {
@@ -20,15 +22,27 @@ func TestClient_FetchBuyHistory(t *testing.T) {
 						{
 							"state":         "SUCCESS",
 							"transact_time": 1736000000,
-							"income":        "12.50",
+							"price":         "12.50",
+							"fee":           "0",
 							"goods_id":      123456,
-							"asset_info":    map[string]string{"assetid": "asset-1"},
+							"asset_info": map[string]any{
+								"assetid":    "asset-1",
+								"classid":    "class-1",
+								"instanceid": "instance-1",
+								"paintwear":  "0.15",
+								"info": map[string]any{
+									"paintseed":  123,
+									"paintindex": 44,
+									"stickers":   []any{},
+									"keychains":  []any{},
+								},
+							},
 						},
 					},
 					"goods_infos": map[string]any{
 						"123456": map[string]string{"short_name": "AK-47 | Redline"},
 					},
-					"total_pages": 1,
+					"total_page": 1,
 				},
 			}
 			_ = json.NewEncoder(w).Encode(resp)
@@ -36,9 +50,9 @@ func TestClient_FetchBuyHistory(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New("test-cookie")
+	c := New("test-cookie", logfx.NewNop())
 	c.BaseURL = srv.URL
-	trades, err := c.FetchBuyHistory(context.Background(), 0)
+	trades, err := c.GetBuyHistory(context.Background())
 	if err != nil {
 		t.Fatalf("FetchBuyHistory: %v", err)
 	}
@@ -47,7 +61,7 @@ func TestClient_FetchBuyHistory(t *testing.T) {
 	}
 	tr := trades[0]
 	if tr.ItemName != "AK-47 | Redline" {
-		t.Errorf("expected AK-47 | Redline, got %s", tr.ItemName)
+		t.Errorf("expected AK-47 | Redline, got %q", tr.ItemName)
 	}
 	if tr.TradeType != "buy" {
 		t.Errorf("expected buy, got %s", tr.TradeType)
@@ -62,24 +76,28 @@ func TestClient_FetchBalance(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code": "OK",
 			"data": map[string]string{
-				"balance":        "100.00",
-				"frozen_balance": "50.00",
+				"cash_amount":     "100.00",
+				"security_amount": "50.00",
+				"frozen_amount":   "30.00",
 			},
 		})
 	}))
 	defer srv.Close()
 
-	c := New("test-cookie")
+	c := New("test-cookie", logfx.NewNop())
 	c.BaseURL = srv.URL
-	bal, err := c.FetchBalance(context.Background())
+	bal, err := c.GetBalance(context.Background())
 	if err != nil {
 		t.Fatalf("FetchBalance: %v", err)
 	}
-	if bal.Available != 10000 {
-		t.Errorf("expected available 10000, got %d", bal.Available)
+	if bal.Available != 100.0 {
+		t.Errorf("expected available 100.00, got %v", bal.Available)
 	}
-	if bal.Purchase != 5000 {
-		t.Errorf("expected purchase 5000, got %d", bal.Purchase)
+	if bal.Purchase != 50.0 {
+		t.Errorf("expected purchase 50.00, got %v", bal.Purchase)
+	}
+	if bal.Frozen != 30.0 {
+		t.Errorf("expected frozen 30.00, got %v", bal.Frozen)
 	}
 }
 
@@ -89,7 +107,7 @@ func TestClient_Verify(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New("test-cookie")
+	c := New("test-cookie", logfx.NewNop())
 	c.BaseURL = srv.URL
 	if err := c.Verify(context.Background()); err != nil {
 		t.Fatalf("Verify: %v", err)
@@ -102,7 +120,7 @@ func TestClient_VerifyFail(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New("bad-cookie")
+	c := New("bad-cookie", logfx.NewNop())
 	c.BaseURL = srv.URL
 	if err := c.Verify(context.Background()); err == nil {
 		t.Fatal("expected error for invalid credential")

@@ -1,30 +1,50 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { type ColumnDef } from "@tanstack/react-table";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
 import ErrorBanner from "../components/ErrorBanner";
 import EmptyState from "../components/EmptyState";
+import SortableTable from "../components/SortableTable";
 import { useItemDetail } from "../hooks/useItemDetail";
 import { formatCNY } from "../lib/format";
+import type { model } from "../lib/wails";
 
 const statusLabel: Record<string, string> = {
   in_inventory: "In Storage",
   listed: "Listed",
   rented: "Rented",
 };
+
+const rentalColumns: ColumnDef<model.RentalRecord>[] = [
+  {
+    accessorKey: "startAt",
+    header: "Start",
+    cell: (info) => new Date((info.getValue() as number) * 1000).toLocaleDateString(),
+  },
+  {
+    accessorKey: "endAt",
+    header: "End",
+    cell: (info) => new Date((info.getValue() as number) * 1000).toLocaleDateString(),
+  },
+  {
+    accessorKey: "durationDays",
+    header: "Days",
+    meta: { align: "right" },
+  },
+  {
+    accessorKey: "income",
+    header: "Income",
+    meta: { align: "right" },
+    cell: (info) => formatCNY(info.getValue() as number),
+  },
+];
 
 export default function InventoryDetailPage() {
   const navigate = useNavigate();
@@ -119,28 +139,11 @@ export default function InventoryDetailPage() {
                 </Grid>
               </Grid>
 
-              <TableContainer component={Paper}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Start</TableCell>
-                      <TableCell>End</TableCell>
-                      <TableCell align="right">Days</TableCell>
-                      <TableCell align="right">Income</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {detail.rentalHistory.map((r, i) => (
-                      <TableRow key={r.ID || i}>
-                        <TableCell>{new Date(r.startAt * 1000).toLocaleDateString()}</TableCell>
-                        <TableCell>{new Date(r.endAt * 1000).toLocaleDateString()}</TableCell>
-                        <TableCell align="right">{r.durationDays}</TableCell>
-                        <TableCell align="right">{formatCNY(r.income)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <SortableTable
+                columns={rentalColumns}
+                data={detail.rentalHistory}
+                getRowId={(r) => String(r.ID)}
+              />
             </Box>
           ) : (
             <Card variant="outlined">

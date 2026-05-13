@@ -18,9 +18,15 @@ type TradeInterface interface {
 	FindTradesByAccount(accountID uint, tradeType string, limit int) ([]model.TradeRecord, error)
 	FindSellsWithMatchedBuy(accountID uint) ([]model.TradeRecord, error)
 	FindUnmatchedSells(accountID uint) ([]model.TradeRecord, error)
-	FindUnmatchedBuys(accountID uint, assetID string) ([]model.TradeRecord, error)
+	FindUnmatchedBuysByItem(itemName string, paintSeed, paintIndex int, paintWear float64) ([]model.TradeRecord, error)
+	FindMatchedBuyForSell(sellID uint) (*model.TradeRecord, error)
 	SetMatchedBuy(sellTradeID, buyTradeID uint) error
-	CountMatchedSellsForBuy(buyTradeID uint) (int64, error)
+	IncrementConsumedQty(buyID uint, qty int64) error
+	FindAllSells(tradeType string) ([]model.TradeRecord, error)
+	FindAllBuys(tradeType string) ([]model.TradeRecord, error)
+	FindEarliestUnmatchedBuy(itemName, exterior string, paintSeed, paintIndex int, paintWear float64, beforeTime int64) (*model.TradeRecord, error)
+	ClearAllMatches() error
+	RebuildInventory() error
 }
 
 type InventoryInterface interface {
@@ -33,6 +39,8 @@ type InventoryInterface interface {
 type PnlInterface interface {
 	UpsertDailyPnl(accountID uint, tradeAt int64, grossPl, fee, netPl int64) error
 	FindPnlByAccount(accountID uint) ([]model.PnlDaily, error)
+	ClearAllPnl() error
+	ReplaceAllPnl(records []model.PnlDaily) error
 }
 
 type RentalInterface interface {

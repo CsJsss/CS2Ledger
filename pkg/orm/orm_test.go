@@ -29,7 +29,7 @@ func TestAccountCRUD(t *testing.T) {
 		Name:     "test-account",
 		Platform: "buff",
 		Cookie:   "test-cookie",
-		Status:   "active",
+		Status:   AccountStatusActive,
 	}
 	if err := orm.CreateAccount(a); err != nil {
 		t.Fatalf("create: %v", err)
@@ -75,8 +75,7 @@ func TestInventoryUpsert(t *testing.T) {
 
 	item := &model.InventoryItem{
 		AccountID:  1,
-		AssetID:    "asset-1",
-		ItemName:   "AK-47 | Redline",
+		CS2Item:    model.CS2Item{AssetID: "asset-1", ItemName: "AK-47 | Redline"},
 		BuyTradeID: 1,
 		Status:     "in_inventory",
 	}

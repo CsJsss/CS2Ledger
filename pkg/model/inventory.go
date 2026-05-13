@@ -4,17 +4,15 @@ import "gorm.io/gorm"
 
 type InventoryItem struct {
 	gorm.Model
-	AccountID   uint   `gorm:"not null;uniqueIndex:idx_inventory_asset" json:"accountId"`
-	AssetID     string `gorm:"not null;uniqueIndex:idx_inventory_asset" json:"assetId"`
-	ItemName    string `gorm:"not null" json:"itemName"`
-	Exterior    string `json:"exterior"`
-	PaintSeed   *int64 `json:"paintSeed"`
+	CS2Item     `gorm:"embedded"`
+	AccountID   uint   `gorm:"not null" json:"accountId"`
 	BuyTradeID  uint   `gorm:"not null" json:"buyTradeId"`
+	Quantity    int64  `gorm:"not null;default:1" json:"quantity"`
 	Status      string `gorm:"not null;default:in_inventory;index:idx_inventory_status" json:"status"`
-	ListedPrice *int64 `json:"listedPrice"`
-	ListedAt    *int64 `json:"listedAt"`
+	ListedPrice *int64 `json:"listedPrice,omitempty"`
+	ListedAt    *int64 `json:"listedAt,omitempty"`
 
-	BuyTrade *TradeRecord `gorm:"foreignKey:BuyTradeID" json:"-"`
+	BuyTrade *TradeRecord `gorm:"foreignKey:BuyTradeID" json:"buyTrade,omitempty"`
 }
 
 func (InventoryItem) TableName() string { return "inventory" }

@@ -3,10 +3,34 @@ package platform
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
+
+	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
+
+var exteriorSuffixes = []string{
+	"崭新出厂", "略有磨损", "久经沙场", "破损不堪", "战痕累累",
+	"Factory New", "Minimal Wear", "Field-Tested", "Well-Worn", "Battle-Scarred",
+}
+
+// NormalizeItemName strips known CS2 exterior/wear suffixes from item names
+// and returns the cleaned name along with any extracted exterior.
+// e.g. "蝴蝶刀（★） | 澄澈之水 (久经沙场)" → "蝴蝶刀（★） | 澄澈之水", "久经沙场"
+func NormalizeItemName(name string) (normalized string, exterior string) {
+	normalized = strings.TrimSpace(name)
+	for _, ext := range exteriorSuffixes {
+		for _, pat := range []string{" (" + ext + ")", "(" + ext + ")", " " + ext, ext} {
+			if strings.HasSuffix(normalized, pat) {
+				normalized = strings.TrimSpace(normalized[:len(normalized)-len(pat)])
+				exterior = ext
+				return
+			}
+		}
+	}
+	return normalized, ""
+}
 
 // randomUA returns a randomized Chrome User-Agent string.
 func RandomUA() string {
@@ -26,11 +50,13 @@ func RandomUA() string {
 }
 
 // FetchAllPages calls fetchFn for each page until exhausted or ctx cancelled.
+// When limit > 0, pagination stops early once limit records are collected.
 func FetchAllPages(
 	ctx context.Context,
-	log *slog.Logger,
+	log *logfx.Logger,
 	name, direction string,
 	pageSleep time.Duration,
+	limit int,
 	fetchFn func(ctx context.Context, page int) (items []TradeRecord, hasMore bool, err error),
 ) ([]TradeRecord, error) {
 	var all []TradeRecord
@@ -45,6 +71,10 @@ func FetchAllPages(
 			return all, fmt.Errorf("%s %s history page %d: %w", name, direction, page, err)
 		}
 		all = append(all, items...)
+
+		if limit > 0 && len(all) >= limit {
+			return all[:limit], nil
+		}
 		if !hasMore {
 			return all, nil
 		}

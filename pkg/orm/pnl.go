@@ -3,6 +3,8 @@ package orm
 import (
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 )
 
@@ -21,6 +23,22 @@ func (o *ormImpl) UpsertDailyPnl(accountID uint, tradeAt int64, grossPl, fee, ne
 			updated_at = ?
 	`, accountID, date, grossPl, fee, netPl, now, now,
 		grossPl, fee, netPl, now).Error
+}
+
+func (o *ormImpl) ClearAllPnl() error {
+	return o.db.Unscoped().Where("1=1").Delete(&model.PnlDaily{}).Error
+}
+
+func (o *ormImpl) ReplaceAllPnl(records []model.PnlDaily) error {
+	if len(records) == 0 {
+		return o.db.Unscoped().Where("1=1").Delete(&model.PnlDaily{}).Error
+	}
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("1=1").Delete(&model.PnlDaily{}).Error; err != nil {
+			return err
+		}
+		return tx.Create(&records).Error
+	})
 }
 
 func (o *ormImpl) FindPnlByAccount(accountID uint) ([]model.PnlDaily, error) {

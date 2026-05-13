@@ -9,19 +9,16 @@ import (
 )
 
 type CompletedTradeView struct {
-	SellTradeID   uint   `json:"sellTradeId"`
-	ItemName      string `json:"itemName"`
-	SellUnitPrice int64  `json:"sellUnitPrice"`
-	Quantity      int64  `json:"quantity"`
-	SellFee       int64  `json:"sellFee"`
-	SellAt        int64  `json:"sellAt"`
-	BuyTradeID    uint   `json:"buyTradeId"`
-	BuyUnitPrice  int64  `json:"buyUnitPrice"`
-	BuyFee        int64  `json:"buyFee"`
-	BuyAt         int64  `json:"buyAt"`
-	GrossPl       int64  `json:"grossPl"`
-	TotalFee      int64  `json:"totalFee"`
-	NetPl         int64  `json:"netPl"`
+	ItemName  string  `json:"itemName"`
+	Exterior  string  `json:"exterior"`
+	PaintWear float64 `json:"paintWear"`
+	Quantity  int64   `json:"quantity"`
+	GrossPl   int64   `json:"grossPl"`
+	TotalFee  int64   `json:"totalFee"`
+	NetPl     int64   `json:"netPl"`
+
+	SellTrade model.TradeRecord `json:"sellTrade"`
+	BuyTrade  model.TradeRecord `json:"buyTrade"`
 }
 
 type CompletedTradesSummary struct {
@@ -35,6 +32,7 @@ type TradeInterface interface {
 	ListByAccount(accountID uint, tradeType string) ([]model.TradeRecord, error)
 	ListCompletedTrades(accountID uint) ([]CompletedTradeView, error)
 	GetCompletedTradesSummary(accountID uint) (*CompletedTradesSummary, error)
+	ListUnmatchedSells(accountID uint) ([]model.TradeRecord, error)
 }
 
 type service struct {
@@ -58,36 +56,29 @@ func (svc *service) ListCompletedTrades(accountID uint) ([]CompletedTradeView, e
 
 	views := make([]CompletedTradeView, 0, len(sells))
 	for _, sell := range sells {
-		buys, _ := svc.orm.FindTradesByAccount(accountID, "buy", 0)
-		var buy *model.TradeRecord
-		for i := range buys {
-			if buys[i].ID == *sell.MatchedBuyTradeID {
-				buy = &buys[i]
-				break
-			}
-		}
-		if buy == nil {
+		buy, err := svc.orm.FindMatchedBuyForSell(sell.ID)
+		if err != nil || buy == nil {
 			continue
 		}
 
 		grossPl := (sell.UnitPrice - buy.UnitPrice) * sell.Quantity
 		views = append(views, CompletedTradeView{
-			SellTradeID:   sell.ID,
-			ItemName:      sell.ItemName,
-			SellUnitPrice: sell.UnitPrice,
-			Quantity:      sell.Quantity,
-			SellFee:       sell.Fee,
-			SellAt:        sell.TradeAt,
-			BuyTradeID:    buy.ID,
-			BuyUnitPrice:  buy.UnitPrice,
-			BuyFee:        buy.Fee,
-			BuyAt:         buy.TradeAt,
-			GrossPl:       grossPl,
-			TotalFee:      sell.Fee + buy.Fee,
-			NetPl:         grossPl - (sell.Fee + buy.Fee),
+			ItemName:  sell.ItemName,
+			Exterior:  sell.Exterior,
+			PaintWear: sell.PaintWear,
+			Quantity:  sell.Quantity,
+			GrossPl:   grossPl,
+			TotalFee:  sell.Fee + buy.Fee,
+			NetPl:     grossPl - (sell.Fee + buy.Fee),
+			SellTrade: sell,
+			BuyTrade:  *buy,
 		})
 	}
 	return views, nil
+}
+
+func (svc *service) ListUnmatchedSells(accountID uint) ([]model.TradeRecord, error) {
+	return svc.orm.FindUnmatchedSells(accountID)
 }
 
 func (svc *service) GetCompletedTradesSummary(accountID uint) (*CompletedTradesSummary, error) {

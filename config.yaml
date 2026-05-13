@@ -3,6 +3,7 @@
 
 log:
   level: info # debug | info | warn | error
+  # path: "logs/app.log" # if set, logs are written to this file (as well as stderr)
 
 # db:
 #   dsn: "file:data.db"

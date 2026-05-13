@@ -63,6 +63,15 @@ func NewTestORM() (ORMInterface, error) {
 		return nil, fmt.Errorf("orm: automigrate: %w", err)
 	}
 
+	// AutoMigrate can't create composite unique indexes spanning parent and embedded struct fields.
+	// These indexes are defined in migrations/001_initial.sql for the production path.
+	if err := gormDB.Exec(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_asset ON inventory(account_id, asset_id)",
+	).Error; err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("orm: create index: %w", err)
+	}
+
 	return &ormImpl{db: gormDB}, nil
 }
 

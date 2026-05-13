@@ -84,7 +84,20 @@ func (a *App) GetCompletedTrades(accountID uint) ([]trade.CompletedTradeView, er
 }
 
 func (a *App) GetCompletedTradesSummary(accountID uint) (*trade.CompletedTradesSummary, error) {
-	return a.svc.Trade().GetCompletedTradesSummary(accountID)
+	s, err := a.svc.Pnl().GetSummary(accountID)
+	if err != nil {
+		return nil, err
+	}
+	return &trade.CompletedTradesSummary{
+		TotalTrades:  s.TotalTrades,
+		TotalGrossPl: s.TotalGrossPl,
+		TotalFee:     s.TotalFee,
+		TotalNetPl:   s.TotalNetPl,
+	}, nil
+}
+
+func (a *App) GetUnmatchedSells(accountID uint) ([]model.TradeRecord, error) {
+	return a.svc.Trade().ListUnmatchedSells(accountID)
 }
 
 func (a *App) GetPnlSummary(accountID uint) (*pnl.PnlSummaryView, error) {
