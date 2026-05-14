@@ -29,8 +29,11 @@ func (o *ormImpl) DeleteAccount(id uint) error {
 	return o.db.Delete(&model.Account{}, id).Error
 }
 
-func (o *ormImpl) UpdateAccountInfo(id uint, name string, cookie string) error {
-	updates := map[string]any{"name": name}
+func (o *ormImpl) UpdateAccountInfo(id uint, name string, cookie string, withdrawalFeeRate int64) error {
+	updates := map[string]any{
+		"name":                name,
+		"withdrawal_fee_rate": withdrawalFeeRate,
+	}
 	if cookie != "" {
 		updates["cookie"] = cookie
 	}
@@ -48,4 +51,9 @@ func (o *ormImpl) UpdateAccountBalanceAndSyncTime(id uint, available, purchase i
 		"purchase_balance":  purchase,
 		"last_sync_at":      syncAt,
 	}).Error
+}
+
+func (o *ormImpl) UpdateAccountWithdrawalFeeRate(id uint, rate int64) error {
+	return o.db.Model(&model.Account{}).Where("id = ?", id).
+		Update("withdrawal_fee_rate", rate).Error
 }

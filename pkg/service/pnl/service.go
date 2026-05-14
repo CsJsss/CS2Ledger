@@ -11,15 +11,18 @@ import (
 )
 
 type PnlSummaryView struct {
-	TotalTrades  int64 `json:"totalTrades"`
-	TotalGrossPl int64 `json:"totalGrossPl"`
-	TotalFee     int64 `json:"totalFee"`
-	TotalNetPl   int64 `json:"totalNetPl"`
+	TotalTrades       int64 `json:"totalTrades"`
+	TotalGrossPl      int64 `json:"totalGrossPl"`
+	TotalFee          int64 `json:"totalFee"`
+	TotalNetPl        int64 `json:"totalNetPl"`
+	WithdrawalFee     int64 `json:"withdrawalFee"`
+	WithdrawalFeeRate int64 `json:"withdrawalFeeRate"`
 }
 
 type MonthlyPLView struct {
-	Month string `json:"month"`
-	NetPl int64  `json:"netPl"`
+	Month         string `json:"month"`
+	NetPl         int64  `json:"netPl"`
+	WithdrawalFee int64  `json:"withdrawalFee"`
 }
 
 type PnlInterface interface {

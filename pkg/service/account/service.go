@@ -11,9 +11,9 @@ import (
 type AccountInterface interface {
 	List() ([]model.Account, error)
 	Get(id uint) (*model.Account, error)
-	Create(name, platform, cookie string) (*model.Account, error)
+	Create(name, platform, cookie string, withdrawalFeeRate int64) (*model.Account, error)
 	Update(a *model.Account) error
-	UpdateInfo(id uint, name string, cookie string) error
+	UpdateInfo(id uint, name string, cookie string, withdrawalFeeRate int64) error
 	Delete(id uint) error
 }
 
@@ -34,12 +34,13 @@ func (s *service) Get(id uint) (*model.Account, error) {
 	return s.orm.FindAccountByID(id)
 }
 
-func (s *service) Create(name, platform, cookie string) (*model.Account, error) {
+func (s *service) Create(name, platform, cookie string, withdrawalFeeRate int64) (*model.Account, error) {
 	a := &model.Account{
-		Name:     name,
-		Platform: platform,
-		Cookie:   cookie,
-		Status:   orm.AccountStatusActive,
+		Name:              name,
+		Platform:          platform,
+		Cookie:            cookie,
+		WithdrawalFeeRate: withdrawalFeeRate,
+		Status:            orm.AccountStatusActive,
 	}
 	if err := s.orm.CreateAccount(a); err != nil {
 		return nil, err
@@ -51,8 +52,8 @@ func (s *service) Update(a *model.Account) error {
 	return s.orm.UpdateAccount(a)
 }
 
-func (s *service) UpdateInfo(id uint, name string, cookie string) error {
-	return s.orm.UpdateAccountInfo(id, name, cookie)
+func (s *service) UpdateInfo(id uint, name string, cookie string, withdrawalFeeRate int64) error {
+	return s.orm.UpdateAccountInfo(id, name, cookie, withdrawalFeeRate)
 }
 
 func (s *service) Delete(id uint) error {

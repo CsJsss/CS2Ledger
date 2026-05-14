@@ -22,8 +22,8 @@ export default function DashboardPage() {
 
       {isLoading && (
         <Grid container spacing={2} mt={1}>
-          {[1, 2, 3, 4].map((i) => (
-            <Grid item xs={3} key={i}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Grid item xs={i <= 3 ? 4 : 6} key={i}>
               <Card>
                 <CardContent>
                   <Skeleton width="60%" />
@@ -57,7 +57,7 @@ export default function DashboardPage() {
 
       {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0) && (
         <Grid container spacing={2} mt={1}>
-          <Grid item xs={3}>
+          <Grid item xs={4}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">Net Worth</Typography>
@@ -65,7 +65,15 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">Withdrawal Fee</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalWithdrawalFee)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={4}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">Inventory Items</Typography>
@@ -73,7 +81,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={6}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">Completed Trades</Typography>
@@ -81,7 +89,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={6}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">Rental Income</Typography>

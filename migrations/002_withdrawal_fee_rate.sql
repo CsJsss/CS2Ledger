@@ -1,0 +1,1 @@
+ALTER TABLE accounts ADD COLUMN withdrawal_fee_rate INTEGER NOT NULL DEFAULT 0;

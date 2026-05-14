@@ -7,17 +7,18 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Box from "@mui/material/Box";
+import InputAdornment from "@mui/material/InputAdornment";
 import Dialog from "./Dialog";
 import { PLATFORM_OPTIONS } from "../lib/constants";
 
 interface AddAccountDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; platform: string; cookie: string }) => void;
+  onSubmit: (data: { name: string; platform: string; cookie: string; withdrawalFeeRate: number }) => void;
   isPending: boolean;
   error: string | null;
   editMode?: boolean;
-  initialValues?: { name: string; platform: string };
+  initialValues?: { name: string; platform: string; withdrawalFeeRate?: number };
 }
 
 export default function AddAccountDialog({
@@ -32,16 +33,23 @@ export default function AddAccountDialog({
   const [name, setName] = useState("");
   const [platform, setPlatform] = useState<string>(PLATFORM_OPTIONS[0].value);
   const [cookie, setCookie] = useState("");
+  const [withdrawalFeeRate, setWithdrawalFeeRate] = useState("");
 
   useEffect(() => {
     if (editMode && initialValues) {
       setName(initialValues.name);
       setPlatform(initialValues.platform);
       setCookie("");
+      setWithdrawalFeeRate(
+        initialValues.withdrawalFeeRate != null
+          ? String(initialValues.withdrawalFeeRate / 100)
+          : ""
+      );
     } else if (!editMode) {
       setName("");
       setPlatform(PLATFORM_OPTIONS[0].value);
       setCookie("");
+      setWithdrawalFeeRate("");
     }
   }, [open, editMode, initialValues]);
 
@@ -49,7 +57,9 @@ export default function AddAccountDialog({
     e.preventDefault();
     if (!name.trim()) return;
     if (!editMode && !cookie.trim()) return;
-    onSubmit({ name: name.trim(), platform, cookie: cookie.trim() });
+    const rate = parseFloat(withdrawalFeeRate);
+    const rateBasisPoints = !withdrawalFeeRate || isNaN(rate) ? 0 : Math.round(rate * 100);
+    onSubmit({ name: name.trim(), platform, cookie: cookie.trim(), withdrawalFeeRate: rateBasisPoints });
   };
 
   const handleCancel = () => {
@@ -57,6 +67,7 @@ export default function AddAccountDialog({
     if (!editMode) {
       setName("");
       setCookie("");
+      setWithdrawalFeeRate("");
     }
   };
 
@@ -113,6 +124,24 @@ export default function AddAccountDialog({
           rows={4}
           size="small"
           fullWidth
+        />
+
+        <TextField
+          label="Withdrawal Fee Rate"
+          value={withdrawalFeeRate}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || /^\d*\.?\d*$/.test(v)) {
+              setWithdrawalFeeRate(v);
+            }
+          }}
+          placeholder="0"
+          size="small"
+          fullWidth
+          InputProps={{
+            endAdornment: <InputAdornment position="end">%</InputAdornment>,
+          }}
+          helperText="Percentage deducted from net profit on withdrawal (default: 0%)"
         />
       </Box>
     </Dialog>

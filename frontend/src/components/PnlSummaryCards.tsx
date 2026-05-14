@@ -2,6 +2,10 @@ import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import Box from "@mui/material/Box";
 import { formatCNY, plColor } from "../lib/format";
 
 interface PnlSummaryCardsProps {
@@ -9,6 +13,8 @@ interface PnlSummaryCardsProps {
   totalGrossPl: number;
   totalFee: number;
   totalNetPl: number;
+  withdrawalFee?: number;
+  withdrawalFeeRate?: number;
 }
 
 export default function PnlSummaryCards({
@@ -16,7 +22,12 @@ export default function PnlSummaryCards({
   totalGrossPl,
   totalFee,
   totalNetPl,
+  withdrawalFee = 0,
+  withdrawalFeeRate = 0,
 }: PnlSummaryCardsProps) {
+  const displayNetPl = totalNetPl - withdrawalFee;
+  const showTooltip = withdrawalFeeRate > 0 && withdrawalFee > 0;
+
   return (
     <Grid container spacing={2}>
       <Grid item xs={3}>
@@ -48,9 +59,30 @@ export default function PnlSummaryCards({
       <Grid item xs={3}>
         <Card>
           <CardContent>
-            <Typography variant="body2" color="text.secondary">Net P/L</Typography>
-            <Typography variant="h5" mt={1} color={plColor(totalNetPl)}>
-              {formatCNY(totalNetPl)}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography variant="body2" color="text.secondary">Net P/L</Typography>
+              {showTooltip && (
+                <Tooltip
+                  title={
+                    <Box>
+                      <Typography variant="body2">
+                        Withdrawal fee: {formatCNY(withdrawalFee)}
+                      </Typography>
+                      <Typography variant="body2">
+                        Rate: {(withdrawalFeeRate / 100).toFixed(2)}%
+                      </Typography>
+                    </Box>
+                  }
+                  arrow
+                >
+                  <IconButton size="small" sx={{ p: 0 }}>
+                    <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+            <Typography variant="h5" mt={1} color={plColor(displayNetPl)}>
+              {formatCNY(displayNetPl)}
             </Typography>
           </CardContent>
         </Card>

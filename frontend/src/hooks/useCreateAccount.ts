@@ -4,8 +4,8 @@ import { CreateAccount } from "../lib/wails";
 export function useCreateAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, platform, cookie }: { name: string; platform: string; cookie: string }) =>
-      CreateAccount(name, platform, cookie),
+    mutationFn: ({ name, platform, cookie, withdrawalFeeRate }: { name: string; platform: string; cookie: string; withdrawalFeeRate: number }) =>
+      CreateAccount(name, platform, cookie, withdrawalFeeRate),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },

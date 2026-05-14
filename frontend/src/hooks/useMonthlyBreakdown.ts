@@ -12,13 +12,19 @@ export function useMonthlyBreakdown(selectedAccountId: number | null, year: numb
       }
       if (accounts.length === 0) return [];
       const results = await Promise.all(accounts.map((a) => GetMonthlyBreakdown(a.ID, year)));
-      const monthMap = new Map<string, number>();
+      const monthMap = new Map<string, { netPl: number; withdrawalFee: number }>();
       for (const r of results) {
         for (const m of r) {
-          monthMap.set(m.month, (monthMap.get(m.month) ?? 0) + m.netPl);
+          const existing = monthMap.get(m.month);
+          if (existing) {
+            existing.netPl += m.netPl;
+            existing.withdrawalFee += m.withdrawalFee;
+          } else {
+            monthMap.set(m.month, { netPl: m.netPl, withdrawalFee: m.withdrawalFee });
+          }
         }
       }
-      return Array.from(monthMap, ([month, netPl]) => ({ month, netPl }));
+      return Array.from(monthMap, ([month, v]) => ({ month, netPl: v.netPl, withdrawalFee: v.withdrawalFee }));
     },
     staleTime: 2 * 60 * 1000,
     enabled: selectedAccountId !== null || accounts.length > 0,

@@ -8,9 +8,10 @@ type AccountInterface interface {
 	FindAccountByID(id uint) (*model.Account, error)
 	UpdateAccount(*model.Account) error
 	DeleteAccount(id uint) error
-	UpdateAccountInfo(id uint, name string, cookie string) error
+	UpdateAccountInfo(id uint, name string, cookie string, withdrawalFeeRate int64) error
 	UpdateAccountStatus(id uint, status string) error
 	UpdateAccountBalanceAndSyncTime(id uint, available, purchase int64, syncAt int64) error
+	UpdateAccountWithdrawalFeeRate(id uint, rate int64) error
 }
 
 type TradeInterface interface {

@@ -211,6 +211,8 @@ export default function PnLPage() {
             totalGrossPl={summary.totalGrossPl}
             totalFee={summary.totalFee}
             totalNetPl={summary.totalNetPl}
+            withdrawalFee={summary.withdrawalFee}
+            withdrawalFeeRate={summary.withdrawalFeeRate}
           />
 
           <Card sx={{ mt: 3 }}>
