@@ -22,12 +22,10 @@ type CompletedTradeView struct {
 }
 
 type CompletedTradesSummary struct {
-	TotalTrades       int64 `json:"totalTrades"`
-	TotalGrossPl      int64 `json:"totalGrossPl"`
-	TotalFee          int64 `json:"totalFee"`
-	TotalNetPl        int64 `json:"totalNetPl"`
-	WithdrawalFee     int64 `json:"withdrawalFee"`
-	WithdrawalFeeRate int64 `json:"withdrawalFeeRate"`
+	TotalTrades  int64 `json:"totalTrades"`
+	TotalGrossPl int64 `json:"totalGrossPl"`
+	TotalFee     int64 `json:"totalFee"`
+	TotalNetPl   int64 `json:"totalNetPl"`
 }
 
 type TradeInterface interface {

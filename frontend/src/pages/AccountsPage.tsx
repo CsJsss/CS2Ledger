@@ -23,7 +23,7 @@ import type { model } from "../lib/wails";
 export default function AccountsPage() {
   const setSelectedAccount = useUIStore((s) => s.setSelectedAccount);
   const [showAdd, setShowAdd] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<{ ID: number; name: string; platform: string; withdrawalFeeRate: number } | null>(null);
+  const [editingAccount, setEditingAccount] = useState<{ ID: number; name: string; platform: string } | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [syncDialogId, setSyncDialogId] = useState<number | null>(null);
 
@@ -63,15 +63,6 @@ export default function AccountsPage() {
           variant="outlined"
         />
       ),
-    },
-    {
-      accessorKey: "withdrawalFeeRate",
-      header: "W/D Fee",
-      meta: { align: "right" },
-      cell: (info) => {
-        const v = info.getValue() as number;
-        return <Typography variant="body2">{(v / 100).toFixed(2)}%</Typography>;
-      },
     },
     {
       accessorKey: "availableBalance",
@@ -118,7 +109,7 @@ export default function AccountsPage() {
             </Button>
             <Button
               size="small"
-              onClick={() => setEditingAccount({ ID: acc.ID, name: acc.name, platform: acc.platform, withdrawalFeeRate: acc.withdrawalFeeRate })}
+              onClick={() => setEditingAccount({ ID: acc.ID, name: acc.name, platform: acc.platform })}
             >
               Edit
             </Button>
@@ -198,7 +189,7 @@ export default function AccountsPage() {
         <AddAccountDialog
           open={showAdd}
           onClose={() => { setShowAdd(false); createMut.reset(); }}
-          onSubmit={(data) => createMut.mutate({ name: data.name, platform: data.platform, cookie: data.cookie, withdrawalFeeRate: data.withdrawalFeeRate }, { onSuccess: () => setShowAdd(false) })}
+          onSubmit={(data) => createMut.mutate(data, { onSuccess: () => setShowAdd(false) })}
           isPending={createMut.isPending}
           error={createMut.error ? String(createMut.error) : null}
         />
@@ -208,9 +199,9 @@ export default function AccountsPage() {
         <AddAccountDialog
           open={true}
           editMode
-          initialValues={{ name: editingAccount.name, platform: editingAccount.platform, withdrawalFeeRate: editingAccount.withdrawalFeeRate }}
+          initialValues={{ name: editingAccount.name, platform: editingAccount.platform }}
           onClose={() => { setEditingAccount(null); updateMut.reset(); }}
-          onSubmit={(data) => updateMut.mutate({ id: editingAccount.ID, name: data.name, cookie: data.cookie, withdrawalFeeRate: data.withdrawalFeeRate }, { onSuccess: () => setEditingAccount(null) })}
+          onSubmit={(data) => updateMut.mutate({ id: editingAccount.ID, name: data.name, cookie: data.cookie }, { onSuccess: () => setEditingAccount(null) })}
           isPending={updateMut.isPending}
           error={updateMut.error ? String(updateMut.error) : null}
         />

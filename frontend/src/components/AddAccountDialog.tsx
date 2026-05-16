@@ -7,7 +7,6 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Box from "@mui/material/Box";
-import InputAdornment from "@mui/material/InputAdornment";
 import Dialog from "./Dialog";
 import { PLATFORM_OPTIONS } from "../lib/constants";
 
@@ -24,11 +23,11 @@ function useResettableState(open: boolean, editMode: boolean, initial: string) {
 interface AddAccountDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string; platform: string; cookie: string; withdrawalFeeRate: number }) => void;
+  onSubmit: (data: { name: string; platform: string; cookie: string }) => void;
   isPending: boolean;
   error: string | null;
   editMode?: boolean;
-  initialValues?: { name: string; platform: string; withdrawalFeeRate?: number };
+  initialValues?: { name: string; platform: string };
 }
 
 export default function AddAccountDialog({
@@ -42,22 +41,16 @@ export default function AddAccountDialog({
 }: AddAccountDialogProps) {
   const [name, setName] = useResettableState(open, editMode, "");
   const [platform, setPlatform] = useState<string>(PLATFORM_OPTIONS[0].value);
-  const [cookie, setCookie] = useResettableState(open, editMode, "");
-  const [identityId, setIdentityId] = useResettableState(open, editMode, "");
-  const [rsaKey, setRsaKey] = useResettableState(open, editMode, "");
-  const [withdrawalFeeRate, setWithdrawalFeeRate] = useResettableState(open, editMode, "");
+  const [cookie, setCookie] = useState("");
 
   useEffect(() => {
     if (editMode && initialValues) {
       setName(initialValues.name);
       setPlatform(initialValues.platform);
-      setWithdrawalFeeRate(
-        initialValues.withdrawalFeeRate != null
-          ? String(initialValues.withdrawalFeeRate / 100)
-          : ""
-      );
+      setCookie("");
     } else if (!editMode) {
       setPlatform(PLATFORM_OPTIONS[0].value);
+      setCookie("");
     }
   }, [open, editMode, initialValues, setName, setWithdrawalFeeRate]);
 
@@ -78,10 +71,8 @@ export default function AddAccountDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (!editMode && credentialEmpty) return;
-    const rate = parseFloat(withdrawalFeeRate);
-    const rateBasisPoints = !withdrawalFeeRate || isNaN(rate) ? 0 : Math.round(rate * 100);
-    onSubmit({ name: name.trim(), platform, cookie: buildCredential(), withdrawalFeeRate: rateBasisPoints });
+    if (!editMode && !cookie.trim()) return;
+    onSubmit({ name: name.trim(), platform, cookie: cookie.trim() });
   };
 
   const handleCancel = () => {
@@ -89,9 +80,6 @@ export default function AddAccountDialog({
     if (!editMode) {
       setName("");
       setCookie("");
-      setIdentityId("");
-      setRsaKey("");
-      setWithdrawalFeeRate("");
     }
   };
 
@@ -138,59 +126,16 @@ export default function AddAccountDialog({
           </Select>
         </FormControl>
 
-        {isRSA ? (
-          <>
-            <TextField
-              label="身份ID"
-              value={identityId}
-              onChange={(e) => setIdentityId(e.target.value)}
-              placeholder="Partner ID"
-              required={!editMode}
-              size="small"
-              fullWidth
-            />
-            <TextField
-              label="RSA 私钥"
-              value={rsaKey}
-              onChange={(e) => setRsaKey(e.target.value)}
-              placeholder={editMode ? "Leave empty to keep current key" : "Paste your RSA private key (PEM)..."}
-              required={!editMode}
-              multiline
-              rows={4}
-              size="small"
-              fullWidth
-            />
-          </>
-        ) : (
-          <TextField
-            label="Cookie"
-            value={cookie}
-            onChange={(e) => setCookie(e.target.value)}
-            placeholder={editMode ? "Leave empty to keep current cookie" : "Paste your platform cookie here..."}
-            required={!editMode}
-            multiline
-            rows={4}
-            size="small"
-            fullWidth
-          />
-        )}
-
         <TextField
-          label="Withdrawal Fee Rate"
-          value={withdrawalFeeRate}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "" || /^\d*\.?\d*$/.test(v)) {
-              setWithdrawalFeeRate(v);
-            }
-          }}
-          placeholder="0"
+          label="Cookie"
+          value={cookie}
+          onChange={(e) => setCookie(e.target.value)}
+          placeholder={editMode ? "Leave empty to keep current cookie" : "Paste your platform cookie here..."}
+          required={!editMode}
+          multiline
+          rows={4}
           size="small"
           fullWidth
-          InputProps={{
-            endAdornment: <InputAdornment position="end">%</InputAdornment>,
-          }}
-          helperText="Percentage deducted from net profit on withdrawal (default: 0%)"
         />
       </Box>
     </Dialog>

@@ -13,11 +13,10 @@ import (
 )
 
 type DashboardSummary struct {
-	TotalNetWorth      int64 `json:"totalNetWorth"`
-	InventoryCount     int64 `json:"inventoryCount"`
-	CompletedTrades    int64 `json:"completedTrades"`
-	TotalRentalIncome  int64 `json:"totalRentalIncome"`
-	TotalWithdrawalFee int64 `json:"totalWithdrawalFee"`
+	TotalNetWorth     int64 `json:"totalNetWorth"`
+	InventoryCount    int64 `json:"inventoryCount"`
+	CompletedTrades   int64 `json:"completedTrades"`
+	TotalRentalIncome int64 `json:"totalRentalIncome"`
 }
 
 type App struct {
@@ -52,16 +51,16 @@ func (a *App) GetAccounts() ([]model.Account, error) {
 	return a.svc.Account().List()
 }
 
-func (a *App) CreateAccount(name, platform, cookie string, withdrawalFeeRate int64) (*model.Account, error) {
-	return a.svc.Account().Create(name, platform, cookie, withdrawalFeeRate)
+func (a *App) CreateAccount(name, platform, cookie string) (*model.Account, error) {
+	return a.svc.Account().Create(name, platform, cookie)
 }
 
 func (a *App) UpdateAccount(acc *model.Account) error {
 	return a.svc.Account().Update(acc)
 }
 
-func (a *App) UpdateAccountInfo(id uint, name string, cookie string, withdrawalFeeRate int64) error {
-	return a.svc.Account().UpdateInfo(id, name, cookie, withdrawalFeeRate)
+func (a *App) UpdateAccountInfo(id uint, name string, cookie string) error {
+	return a.svc.Account().UpdateInfo(id, name, cookie)
 }
 
 func (a *App) DeleteAccount(id uint) error {
@@ -89,17 +88,11 @@ func (a *App) GetCompletedTradesSummary(accountID uint) (*trade.CompletedTradesS
 	if err != nil {
 		return nil, err
 	}
-	acc, err := a.svc.Account().Get(accountID)
-	if err != nil {
-		return nil, err
-	}
 	return &trade.CompletedTradesSummary{
-		TotalTrades:       s.TotalTrades,
-		TotalGrossPl:      s.TotalGrossPl,
-		TotalFee:          s.TotalFee,
-		TotalNetPl:        s.TotalNetPl,
-		WithdrawalFee:     withdrawalFee(s.TotalNetPl, acc.WithdrawalFeeRate),
-		WithdrawalFeeRate: acc.WithdrawalFeeRate,
+		TotalTrades:  s.TotalTrades,
+		TotalGrossPl: s.TotalGrossPl,
+		TotalFee:     s.TotalFee,
+		TotalNetPl:   s.TotalNetPl,
 	}, nil
 }
 
@@ -108,32 +101,11 @@ func (a *App) GetUnmatchedSells(accountID uint) ([]model.TradeRecord, error) {
 }
 
 func (a *App) GetPnlSummary(accountID uint) (*pnl.PnlSummaryView, error) {
-	s, err := a.svc.Pnl().GetSummary(accountID)
-	if err != nil {
-		return nil, err
-	}
-	acc, err := a.svc.Account().Get(accountID)
-	if err != nil {
-		return nil, err
-	}
-	s.WithdrawalFee = withdrawalFee(s.TotalNetPl, acc.WithdrawalFeeRate)
-	s.WithdrawalFeeRate = acc.WithdrawalFeeRate
-	return s, nil
+	return a.svc.Pnl().GetSummary(accountID)
 }
 
 func (a *App) GetMonthlyBreakdown(accountID uint, year int) ([]pnl.MonthlyPLView, error) {
-	views, err := a.svc.Pnl().GetMonthlyBreakdown(accountID, year)
-	if err != nil {
-		return nil, err
-	}
-	acc, err := a.svc.Account().Get(accountID)
-	if err != nil {
-		return nil, err
-	}
-	for i := range views {
-		views[i].WithdrawalFee = withdrawalFee(views[i].NetPl, acc.WithdrawalFeeRate)
-	}
-	return views, nil
+	return a.svc.Pnl().GetMonthlyBreakdown(accountID, year)
 }
 
 func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
@@ -148,9 +120,7 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 		summary, _ := a.svc.Pnl().GetSummary(acc.ID)
 		if summary != nil {
 			ds.CompletedTrades += summary.TotalTrades
-			wf := withdrawalFee(summary.TotalNetPl, acc.WithdrawalFeeRate)
-			ds.TotalWithdrawalFee += wf
-			ds.TotalNetWorth += summary.TotalNetPl - wf
+			ds.TotalNetWorth += summary.TotalNetPl
 		}
 	}
 	return ds, nil
@@ -158,11 +128,4 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 
 func (a *App) GetRentalHistory(accountID uint, assetID string) ([]model.RentalRecord, error) {
 	return a.svc.Rental().ListByAsset(accountID, assetID)
-}
-
-func withdrawalFee(netPl, rateBasisPoints int64) int64 {
-	if netPl <= 0 || rateBasisPoints <= 0 {
-		return 0
-	}
-	return netPl * rateBasisPoints / 10000
 }

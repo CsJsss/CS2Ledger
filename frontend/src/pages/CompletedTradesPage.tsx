@@ -401,8 +401,6 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
         totalGrossPl={summary.totalGrossPl}
         totalFee={summary.totalFee}
         totalNetPl={summary.totalNetPl}
-        withdrawalFee={summary.withdrawalFee}
-        withdrawalFeeRate={summary.withdrawalFeeRate}
       />
 
       {trades.length === 0 && (

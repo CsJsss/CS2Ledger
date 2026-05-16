@@ -80,7 +80,7 @@ func listAccounts(svc account.AccountInterface) {
 }
 
 func createAccount(svc account.AccountInterface, name, platform, cookie string) {
-	a, err := svc.Create(name, platform, cookie, 0)
+	a, err := svc.Create(name, platform, cookie)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return

@@ -3,17 +3,6 @@ import { GetPnlSummary } from "../lib/wails";
 import { useAccounts } from "./useAccounts";
 import type { pnl } from "../lib/wails";
 
-function zero(): pnl.PnlSummaryView {
-  return {
-    totalTrades: 0,
-    totalGrossPl: 0,
-    totalFee: 0,
-    totalNetPl: 0,
-    withdrawalFee: 0,
-    withdrawalFeeRate: 0,
-  };
-}
-
 export function usePnlSummary(selectedAccountId: number | null) {
   const { data: accounts = [] } = useAccounts();
   return useQuery({
@@ -22,7 +11,8 @@ export function usePnlSummary(selectedAccountId: number | null) {
       if (selectedAccountId != null) {
         return GetPnlSummary(selectedAccountId);
       }
-      if (accounts.length === 0) return zero();
+      const zero = { totalTrades: 0, totalGrossPl: 0, totalFee: 0, totalNetPl: 0 } satisfies pnl.PnlSummaryView;
+      if (accounts.length === 0) return zero;
       const results = await Promise.all(accounts.map((a) => GetPnlSummary(a.ID)));
       return results.reduce(
         (acc, r) => ({
@@ -30,10 +20,8 @@ export function usePnlSummary(selectedAccountId: number | null) {
           totalGrossPl: acc.totalGrossPl + r.totalGrossPl,
           totalFee: acc.totalFee + r.totalFee,
           totalNetPl: acc.totalNetPl + r.totalNetPl,
-          withdrawalFee: acc.withdrawalFee + r.withdrawalFee,
-          withdrawalFeeRate: 0,
         }),
-        zero(),
+        zero,
       );
     },
     staleTime: 2 * 60 * 1000,
