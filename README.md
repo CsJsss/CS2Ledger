@@ -11,7 +11,7 @@
 | BUFF | `buff` | Cookie | 网页版登录后的 Cookie |
 | 悠悠有品 | `youpin` | Token | 网页版登录后的 Authorization Bearer Token |
 | C5 | `c5` | API Key | 商户后台 Open API 的 app-key |
-| ECO | `eco` | Partner ID + 私钥 | 同 IGXE 格式 |
+| ECO | `eco` | Partner ID + RSA私钥 |  |
 
 ## 各平台凭据获取方法
 
