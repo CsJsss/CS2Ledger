@@ -5,6 +5,9 @@ on:
     branches: [main]
     tags: ["v*"]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -32,11 +35,7 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
-      - name: Generate Wails bindings
-        run: wails generate module
-
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
+      - run: cd frontend && npm ci
 
       - name: Build Linux binary
         env:
@@ -77,11 +76,7 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
-      - name: Generate Wails bindings
-        run: wails generate module
-
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
+      - run: cd frontend && npm ci
 
       - name: Build Windows binary
         env:
