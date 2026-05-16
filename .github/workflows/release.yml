@@ -40,6 +40,9 @@ jobs:
           CGO_ENABLED: 1
         run: wails build -platform linux/amd64
 
+      - name: Build platform-cli (Linux)
+        run: go build -o build/bin/platform-cli ./cmd/platform-cli
+
       - name: Package Linux artifact
         run: tar -czf cs2-ledger-linux-amd64.tar.gz -C build/bin cs2-ledger
 
@@ -47,6 +50,12 @@ jobs:
         with:
           name: cs2-ledger-linux-amd64
           path: cs2-ledger-linux-amd64.tar.gz
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-cli-linux-amd64
+          path: build/bin/platform-cli
           retention-days: 7
 
   build-windows:
@@ -73,6 +82,9 @@ jobs:
           CGO_ENABLED: 1
         run: wails build -platform windows/amd64
 
+      - name: Build platform-cli (Windows)
+        run: go build -o build/bin/platform-cli.exe ./cmd/platform-cli
+
       - name: Package Windows artifact
         run: Compress-Archive -Path build/bin/cs2-ledger.exe -DestinationPath cs2-ledger-windows-amd64.zip
 
@@ -80,6 +92,12 @@ jobs:
         with:
           name: cs2-ledger-windows-amd64
           path: cs2-ledger-windows-amd64.zip
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-cli-windows-amd64
+          path: build/bin/platform-cli.exe
           retention-days: 7
 
   release:
@@ -93,6 +111,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: cs2-ledger-windows-amd64
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-cli-linux-amd64
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-cli-windows-amd64
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -100,5 +124,7 @@ jobs:
           files: |
             cs2-ledger-linux-amd64.tar.gz
             cs2-ledger-windows-amd64.zip
+            platform-cli
+            platform-cli.exe
           draft: false
           generate_release_notes: true

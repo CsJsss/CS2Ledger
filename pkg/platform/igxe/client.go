@@ -13,6 +13,15 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
+const dateFormat = "2006-01-02 15:04"
+
+var tradeAtFormats = []string{
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006-01-02T15:04:05Z",
+	"2006-01-02",
+}
+
 type Client struct {
 	platform.BaseClient
 	partnerID  string
@@ -101,8 +110,8 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	_ = tradeState
 	body := map[string]any{
-		"StartTime": time.Now().Add(-30 * 24 * time.Hour).Format("2006-01-02"),
-		"EndTime":   time.Now().Format("2006-01-02"),
+		"StartTime": time.Now().Add(-30 * 24 * time.Hour).Format(dateFormat),
+		"EndTime":   time.Now().Format(dateFormat),
 		"PageIndex": page,
 		"PageSize":  100,
 	}
@@ -143,13 +152,7 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 }
 
 func (c *Client) parseCreateDate(s string) int64 {
-	formats := []string{
-		"2006-01-02 15:04:05",
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04:05Z",
-		"2006-01-02",
-	}
-	for _, f := range formats {
+	for _, f := range tradeAtFormats {
 		t, err := time.Parse(f, s)
 		if err == nil {
 			return t.UnixMilli()
