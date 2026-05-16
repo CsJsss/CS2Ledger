@@ -17,13 +17,14 @@ var rootCmd = &cobra.Command{
 	Short: "CS2Ledger platform API debug tool",
 }
 
-var validPlatforms = []string{"buff", "youpin", "c5", "igxe"}
+var validPlatforms = []string{"buff", "youpin", "c5", "igxe", "eco"}
 
 var tokenEnv = map[string]string{
 	"buff":   "BUFF_TOKEN",
 	"youpin": "YOUPIN_TOKEN",
 	"c5":     "C5_TOKEN",
 	"igxe":   "IGXE_TOKEN",
+	"eco":    "ECO_TOKEN",
 }
 
 var debugMode bool

@@ -1,5 +1,5 @@
 // Package factory resolves the import cycle between platform (interface+types)
-// and platform subpackages (buff/youpin/c5/igxe). The subpackages import
+// and platform subpackages (buff/youpin/c5/igxe/eco). The subpackages import
 // platform to use BaseClient, TradeRecord, etc.; platform cannot import the
 // subpackages without creating a cycle. Factory sits between them — it
 // imports both sides and provides a single NewPlatformClient entry point.
@@ -12,6 +12,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/buff"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/c5"
+	"github.com/CsJsss/CS2Ledger/pkg/platform/eco"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/igxe"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/youpin"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
@@ -36,6 +37,13 @@ func (f *PlatformFactory) New(platformName, credential string, logger *logfx.Log
 	case platform.PlatformC5:
 		log := logger.WithComponent(platform.PlatformC5)
 		return c5.New(credential, log), nil
+	case platform.PlatformECO:
+		log := logger.WithComponent(platform.PlatformECO)
+		c, err := eco.New(credential, log)
+		if err != nil {
+			return nil, err
+		}
+		return c, nil
 	case platform.PlatformIGXE:
 		log := logger.WithComponent(platform.PlatformIGXE)
 		c, err := igxe.New(credential, log)

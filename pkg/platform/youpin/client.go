@@ -101,7 +101,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	c.Log.Debug("youpin: fetching buy history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionBuy, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchBuyPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			return c.fetchBuyPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -111,7 +111,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	return trades, nil
 }
 
-func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
 		"keys":        "",
 		"orderStatus": 340,
@@ -144,7 +144,7 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra 
 	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
 	finished := false
 	for _, o := range result.Data.OrderList {
-		if o.OrderStatusName != "已完成" {
+		if tradeState == platform.TradeStateCompleted && o.OrderStatusName != "已完成" {
 			continue
 		}
 		if o.FinishOrderTime < since {
@@ -257,7 +257,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	c.Log.Debug("youpin: fetching sell history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionSell, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -267,7 +267,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	return trades, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
 		"keys":        "",
 		"orderStatus": 340,
@@ -298,7 +298,7 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra
 	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
 	finished := false
 	for _, o := range result.Data.OrderList {
-		if o.OrderStatusName != "已完成" {
+		if tradeState == platform.TradeStateCompleted && o.OrderStatusName != "已完成" {
 			continue
 		}
 		if o.FinishOrderTime < since {

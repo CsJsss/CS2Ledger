@@ -89,7 +89,7 @@ function TradeDetailDialog({
   const sell = trade.sellTrade;
 
   const platformLabel = (p: string) =>
-    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE" }[p] ?? p);
+    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE", eco: "ECO" }[p] ?? p);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -159,7 +159,7 @@ function UnmatchedSellDetailDialog({
   if (!sell) return null;
 
   const platformLabel = (p: string) =>
-    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE" }[p] ?? p);
+    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE", eco: "ECO" }[p] ?? p);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -612,7 +612,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
   const totalFees = useMemo(() => sells.reduce((sum, s) => sum + s.fee, 0), [sells]);
 
   const platformLabel = (p: string) =>
-    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE" }[p] ?? p);
+    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE", eco: "ECO" }[p] ?? p);
 
   if (isLoading) {
     return (

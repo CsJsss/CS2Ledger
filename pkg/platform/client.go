@@ -11,6 +11,15 @@ const (
 	PlatformYoupin = "youpin"
 	PlatformC5     = "c5"
 	PlatformIGXE   = "igxe"
+	PlatformECO    = "eco"
+)
+
+// TradeState controls whether history queries filter by order completion status.
+type TradeState string
+
+const (
+	TradeStateAll       TradeState = ""          // no filter, return all orders
+	TradeStateCompleted TradeState = "completed" // only completed / successful orders
 )
 
 // TradeRecord is a unified trade model returned by all platform clients.
@@ -41,6 +50,7 @@ type Balance struct {
 type QueryConfig struct {
 	Since       int64             // unix ms, 0 = no filter
 	Limit       int               // max records, 0 = no limit
+	TradeState  TradeState        // order completion filter, default = all
 	ExtraParams map[string]string // merged into HTTP request params
 }
 
@@ -57,6 +67,11 @@ func WithExtraParams(params map[string]string) QueryOption {
 	return func(c *QueryConfig) {
 		c.ExtraParams = params
 	}
+}
+
+// WithTradeState controls whether to filter by order completion status.
+func WithTradeState(s TradeState) QueryOption {
+	return func(c *QueryConfig) { c.TradeState = s }
 }
 
 // WithLimit caps the number of records returned.

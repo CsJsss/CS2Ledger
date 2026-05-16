@@ -3,6 +3,7 @@ export const PLATFORM_OPTIONS = [
   { value: "youpin", label: "悠悠有品" },
   { value: "c5", label: "C5" },
   { value: "igxe", label: "IGXE" },
+  { value: "eco", label: "ECO" },
 ] as const;
 
 export const platformLabel: Record<string, string> = {
@@ -10,6 +11,7 @@ export const platformLabel: Record<string, string> = {
   youpin: "悠悠有品",
   c5: "C5",
   igxe: "IGXE",
+  eco: "ECO",
 };
 
 export const inventoryStatusLabel: Record<string, string> = {

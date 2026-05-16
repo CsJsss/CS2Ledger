@@ -1,6 +1,7 @@
-package igxe
+package eco
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -22,7 +23,6 @@ func parsePrivateKey(pemStr string) (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to decode private key PEM")
 	}
 
-	// Try PKCS8 first, then PKCS1
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err == nil {
 		rsaKey, ok := key.(*rsa.PrivateKey)
@@ -40,7 +40,6 @@ func parsePrivateKey(pemStr string) (*rsa.PrivateKey, error) {
 }
 
 func generateRSASignature(privateKey *rsa.PrivateKey, params map[string]any) (string, error) {
-	// Sort keys case-insensitively
 	keys := make([]string, 0, len(params))
 	for k := range params {
 		keys = append(keys, k)
@@ -49,7 +48,6 @@ func generateRSASignature(privateKey *rsa.PrivateKey, params map[string]any) (st
 		return strings.ToLower(keys[i]) < strings.ToLower(keys[j])
 	})
 
-	// Build key=value&key=value string
 	parts := make([]string, 0, len(params))
 	for _, k := range keys {
 		v := params[k]
@@ -59,7 +57,7 @@ func generateRSASignature(privateKey *rsa.PrivateKey, params map[string]any) (st
 		var vs string
 		switch val := v.(type) {
 		case map[string]any, []any:
-			b, err := json.Marshal(val)
+			b, err := marshalCompact(val)
 			if err != nil {
 				return "", fmt.Errorf("marshal param %s: %w", k, err)
 			}
@@ -67,18 +65,30 @@ func generateRSASignature(privateKey *rsa.PrivateKey, params map[string]any) (st
 		default:
 			vs = fmt.Sprintf("%v", val)
 		}
-		parts = append(parts, fmt.Sprintf("%s=%s", k, vs))
+		parts = append(parts, k+"="+vs)
 	}
 	message := strings.Join(parts, "&")
 
-	// SHA256 hash
 	hashed := sha256.Sum256([]byte(message))
 
-	// Sign with RSA PKCS1v15
 	signature, err := rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA256, hashed[:])
 	if err != nil {
 		return "", fmt.Errorf("sign failed: %w", err)
 	}
 
 	return base64.StdEncoding.EncodeToString(signature), nil
+}
+
+func marshalCompact(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	b := buf.Bytes()
+	if n := len(b); n > 0 && b[n-1] == '\n' {
+		b = b[:n-1]
+	}
+	return b, nil
 }

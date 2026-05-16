@@ -146,7 +146,7 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 
 	go func() {
 		defer wg.Done()
-		b, err := client.GetBuyHistory(ctx, platform.WithSince(since))
+		b, err := client.GetBuyHistory(ctx, platform.WithSince(since), platform.WithTradeState(platform.TradeStateCompleted))
 		mu.Lock()
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("buy history: %v", err))
@@ -158,7 +158,7 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 
 	go func() {
 		defer wg.Done()
-		s, err := client.GetSellHistory(ctx, platform.WithSince(since))
+		s, err := client.GetSellHistory(ctx, platform.WithSince(since), platform.WithTradeState(platform.TradeStateCompleted))
 		mu.Lock()
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("sell history: %v", err))

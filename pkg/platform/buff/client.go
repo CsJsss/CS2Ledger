@@ -78,7 +78,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	c.Log.Info("fetching buy history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionBuy, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			items, hasMore, _, err := c.fetchBuyPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			items, hasMore, _, err := c.fetchBuyPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 			return items, hasMore, err
 		},
 	)
@@ -89,7 +89,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	return trades, nil
 }
 
-func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
+func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
 	query := map[string]string{"game": "csgo", "page_num": strconv.Itoa(page), "page_size": DefaultPageSize}
 	for k, v := range extra {
 		query[k] = v
@@ -115,7 +115,7 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra 
 			finished = true
 			continue
 		}
-		if item.State != StatusSuccess {
+		if tradeState == platform.TradeStateCompleted && item.State != StatusSuccess {
 			continue
 		}
 		trades = append(trades, toBuyTrade(item, result.Data.GoodsInfos))
@@ -127,7 +127,7 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, extra 
 	return trades, true, result.Data.TotalPages, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
 	query := map[string]string{"appid": "730", "mode": "1", "page_num": strconv.Itoa(page), "page_size": DefaultPageSize}
 	for k, v := range extra {
 		query[k] = v
@@ -153,7 +153,7 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra
 			finished = true
 			continue
 		}
-		if item.State != StatusSuccess {
+		if tradeState == platform.TradeStateCompleted && item.State != StatusSuccess {
 			continue
 		}
 		trades = append(trades, toSellTrade(item, result.Data.GoodsInfos))
@@ -171,7 +171,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	c.Log.Info("fetching sell history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionSell, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			items, hasMore, _, err := c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			items, hasMore, _, err := c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 			return items, hasMore, err
 		},
 	)

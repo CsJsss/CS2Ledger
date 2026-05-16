@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
@@ -126,7 +127,7 @@ func TestClient_FetchBuyHistory_SkipsNonCompleted(t *testing.T) {
 
 	c := New("test-token", logfx.NewNop())
 	c.BaseURL = srv.URL
-	trades, err := c.GetBuyHistory(context.Background())
+	trades, err := c.GetBuyHistory(context.Background(), platform.WithTradeState(platform.TradeStateCompleted))
 	if err != nil {
 		t.Fatalf("FetchBuyHistory: %v", err)
 	}

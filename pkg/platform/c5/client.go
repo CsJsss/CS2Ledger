@@ -74,7 +74,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	c.Log.Info("c5: fetching buy history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "buy", 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchBuyPage(ctx, page, cfg.Since)
+			return c.fetchBuyPage(ctx, page, cfg.Since, cfg.TradeState)
 		},
 	)
 	if err != nil {
@@ -84,7 +84,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	return trades, nil
 }
 
-func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
 		"pageNum":  page,
 		"pageSize": defaultPageSize,
@@ -110,7 +110,7 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64) ([]pla
 			finished = true
 			continue
 		}
-		if !isCompletedStatus(item.Status) {
+		if tradeState == platform.TradeStateCompleted && !isCompletedStatus(item.Status) {
 			continue
 		}
 		filtered = append(filtered, item)
@@ -171,7 +171,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	c.Log.Info("c5: fetching sell history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "sell", 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -181,11 +181,14 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	return trades, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	query := map[string]string{
-		"status": strconv.Itoa(StatusCompleted),
-		"page":   strconv.Itoa(page),
-		"limit":  defaultPageSize,
+
+		"page":  strconv.Itoa(page),
+		"limit": defaultPageSize,
+	}
+	if tradeState == platform.TradeStateCompleted {
+		query["status"] = strconv.Itoa(StatusCompleted)
 	}
 	for k, v := range extra {
 		query[k] = v
@@ -214,7 +217,7 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra
 			finished = true
 			continue
 		}
-		if !isCompletedStatus(item.Status) {
+		if tradeState == platform.TradeStateCompleted && !isCompletedStatus(item.Status) {
 			continue
 		}
 		trades = append(trades, toSellerTrade(item))

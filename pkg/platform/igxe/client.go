@@ -88,7 +88,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	c.Log.Info("igxe: fetching sell history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, "sell", 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			return c.fetchSellPage(ctx, page, cfg.Since, cfg.ExtraParams)
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -98,7 +98,8 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	return trades, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, extra map[string]string) ([]platform.TradeRecord, bool, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
+	_ = tradeState
 	body := map[string]any{
 		"StartTime": time.Now().Add(-30 * 24 * time.Hour).Format("2006-01-02"),
 		"EndTime":   time.Now().Format("2006-01-02"),

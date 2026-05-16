@@ -42,7 +42,7 @@ export default function AppLayout() {
 
   const selectedAccount = accounts.find((a) => a.ID === selectedAccountId) ?? null;
   const platformLabel = (p: string) =>
-    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE" }[p] ?? p);
+    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE", eco: "ECO" }[p] ?? p);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && searchText.trim()) {

@@ -13,8 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - TBD
 
 ### Added
-- Multi-platform account management (BUFF / YouPin / C5 / IGXE)
+- Multi-platform account management (BUFF / YouPin / C5 / IGXE / ECO)
 - Trade record auto-fetch and manual entry
-- Rental income record fetching
-- P&L calculation (per-asset FIFO matching)
+- P&L calculation
 - Dashboard overview

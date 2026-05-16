@@ -19,6 +19,7 @@ func init() {
 	sellhistoryCmd.Flags().Int("limit", 10, "Max records to show")
 	sellhistoryCmd.Flags().Int64("since", 0, "Unix millisecond timestamp (0 = all)")
 	sellhistoryCmd.Flags().Bool("raw", false, "Output raw JSON")
+	sellhistoryCmd.Flags().String("trade-state", "completed", "Order state filter: completed, all")
 	sellhistoryCmd.Flags().StringArrayP("query", "Q", nil, "Extra HTTP query param (key=value, repeatable)")
 }
 
@@ -36,9 +37,15 @@ func runSellHistory(cmd *cobra.Command, args []string) error {
 	limit, _ := cmd.Flags().GetInt("limit")
 	since, _ := cmd.Flags().GetInt64("since")
 	raw, _ := cmd.Flags().GetBool("raw")
+	ts, _ := cmd.Flags().GetString("trade-state")
 	extra, _ := cmd.Flags().GetStringArray("query")
 
-	opts := []platform.QueryOption{platform.WithSince(since), platform.WithLimit(limit)}
+	tradeState := platform.TradeStateCompleted
+	if ts == "all" {
+		tradeState = platform.TradeStateAll
+	}
+
+	opts := []platform.QueryOption{platform.WithSince(since), platform.WithLimit(limit), platform.WithTradeState(tradeState)}
 	if params := parseExtraParams(extra); len(params) > 0 {
 		opts = append(opts, platform.WithExtraParams(params))
 	}
