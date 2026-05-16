@@ -41,18 +41,18 @@ export default function AddAccountDialog({
 }: AddAccountDialogProps) {
   const [name, setName] = useResettableState(open, editMode, "");
   const [platform, setPlatform] = useState<string>(PLATFORM_OPTIONS[0].value);
-  const [cookie, setCookie] = useState("");
+  const [cookie, setCookie] = useResettableState(open, editMode, "");
+  const [identityId, setIdentityId] = useResettableState(open, editMode, "");
+  const [rsaKey, setRsaKey] = useResettableState(open, editMode, "");
 
   useEffect(() => {
     if (editMode && initialValues) {
       setName(initialValues.name);
       setPlatform(initialValues.platform);
-      setCookie("");
     } else if (!editMode) {
       setPlatform(PLATFORM_OPTIONS[0].value);
-      setCookie("");
     }
-  }, [open, editMode, initialValues, setName, setWithdrawalFeeRate]);
+  }, [open, editMode, initialValues, setName]);
 
   const isRSA = RSA_PLATFORMS.has(platform);
 
@@ -71,8 +71,8 @@ export default function AddAccountDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (!editMode && !cookie.trim()) return;
-    onSubmit({ name: name.trim(), platform, cookie: cookie.trim() });
+    if (!editMode && credentialEmpty) return;
+    onSubmit({ name: name.trim(), platform, cookie: buildCredential() });
   };
 
   const handleCancel = () => {
@@ -80,6 +80,8 @@ export default function AddAccountDialog({
     if (!editMode) {
       setName("");
       setCookie("");
+      setIdentityId("");
+      setRsaKey("");
     }
   };
 
@@ -126,17 +128,42 @@ export default function AddAccountDialog({
           </Select>
         </FormControl>
 
-        <TextField
-          label="Cookie"
-          value={cookie}
-          onChange={(e) => setCookie(e.target.value)}
-          placeholder={editMode ? "Leave empty to keep current cookie" : "Paste your platform cookie here..."}
-          required={!editMode}
-          multiline
-          rows={4}
-          size="small"
-          fullWidth
-        />
+        {isRSA ? (
+          <>
+            <TextField
+              label="身份ID"
+              value={identityId}
+              onChange={(e) => setIdentityId(e.target.value)}
+              placeholder="Partner ID"
+              required={!editMode}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="RSA 私钥"
+              value={rsaKey}
+              onChange={(e) => setRsaKey(e.target.value)}
+              placeholder={editMode ? "Leave empty to keep current key" : "Paste your RSA private key (PEM)..."}
+              required={!editMode}
+              multiline
+              rows={4}
+              size="small"
+              fullWidth
+            />
+          </>
+        ) : (
+          <TextField
+            label="Cookie"
+            value={cookie}
+            onChange={(e) => setCookie(e.target.value)}
+            placeholder={editMode ? "Leave empty to keep current cookie" : "Paste your platform cookie here..."}
+            required={!editMode}
+            multiline
+            rows={4}
+            size="small"
+            fullWidth
+          />
+        )}
       </Box>
     </Dialog>
   );

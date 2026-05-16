@@ -15,7 +15,7 @@ commit-msg:
   commands:
     conventional:
       run: |
-        msg=$(git log --format=%B -1)
+        msg=$(head -1 "$1")
         if ! echo "$msg" | grep -qE '^(feat|fix|refactor|chore|docs|test|ci|style)'; then
           echo "Commit message must start with a conventional commit type: feat, fix, refactor, chore, docs, test, ci, style"
           exit 1

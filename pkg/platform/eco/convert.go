@@ -11,18 +11,19 @@ import (
 
 var cst = time.FixedZone("CST", 8*3600)
 
+var tradeAtFormats = []string{
+	"2006-01-02 15:04:05",
+	"2006-01-02T15:04:05",
+	"2006-01-02T15:04:05Z",
+	"2006-01-02",
+}
+
 func yuanToFen(yuan float64) int64 {
 	return int64(yuan * 100)
 }
 
 func parseTradeAt(s string) int64 {
-	formats := []string{
-		"2006-01-02 15:04:05",
-		"2006-01-02T15:04:05",
-		"2006-01-02T15:04:05Z",
-		"2006-01-02",
-	}
-	for _, f := range formats {
+	for _, f := range tradeAtFormats {
 		t, err := time.ParseInLocation(f, s, cst)
 		if err == nil {
 			return t.UnixMilli()

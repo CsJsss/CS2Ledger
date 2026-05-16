@@ -16,6 +16,7 @@ import (
 
 const (
 	apiMaxDays = 30
+	dateFormat = "2006-01-02 15:04"
 )
 
 type Client struct {
@@ -151,7 +152,7 @@ func (c *Client) fetchHistory(
 		}
 		all = append(all, trades...)
 		c.Log.Info("eco: time window done", "direction", direction,
-			"window", windowStart.Format("2006-01-02")+"~"+windowEnd.Format("2006-01-02"),
+			"window", windowStart.Format(dateFormat)+"~"+windowEnd.Format(dateFormat),
 			"count", len(trades), "total", len(all))
 
 		if !sinceTime.IsZero() && !windowStart.After(sinceTime) {
@@ -175,8 +176,8 @@ func (c *Client) fetchHistory(
 
 func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string, windowStart, windowEnd time.Time) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
-		"StartTime": windowStart.Format("2006-01-02"),
-		"EndTime":   windowEnd.Format("2006-01-02"),
+		"StartTime": windowStart.Format(dateFormat),
+		"EndTime":   windowEnd.Format(dateFormat),
 		"PageIndex": page,
 		"PageSize":  100,
 	}
@@ -228,8 +229,8 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 
 func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string, windowStart, windowEnd time.Time) ([]platform.TradeRecord, bool, error) {
 	body := map[string]any{
-		"StartTime": windowStart.Format("2006-01-02"),
-		"EndTime":   windowEnd.Format("2006-01-02"),
+		"StartTime": windowStart.Format(dateFormat),
+		"EndTime":   windowEnd.Format(dateFormat),
 		"PageIndex": page,
 		"PageSize":  100,
 	}
