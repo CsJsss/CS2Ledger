@@ -60,6 +60,10 @@ export namespace main {
 	    inventoryCount: number;
 	    completedTrades: number;
 	    totalRentalIncome: number;
+	    totalAvailableBalance: number;
+	    totalFrozenBalance: number;
+	    totalInstantBalance: number;
+	    totalPurchaseBalance: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new DashboardSummary(source);
@@ -71,6 +75,10 @@ export namespace main {
 	        this.inventoryCount = source["inventoryCount"];
 	        this.completedTrades = source["completedTrades"];
 	        this.totalRentalIncome = source["totalRentalIncome"];
+	        this.totalAvailableBalance = source["totalAvailableBalance"];
+	        this.totalFrozenBalance = source["totalFrozenBalance"];
+	        this.totalInstantBalance = source["totalInstantBalance"];
+	        this.totalPurchaseBalance = source["totalPurchaseBalance"];
 	    }
 	}
 
@@ -89,6 +97,8 @@ export namespace model {
 	    name: string;
 	    platform: string;
 	    availableBalance: number;
+	    frozenBalance: number;
+	    instantBalance: number;
 	    purchaseBalance: number;
 	    remark: string;
 	    status: string;
@@ -107,6 +117,8 @@ export namespace model {
 	        this.name = source["name"];
 	        this.platform = source["platform"];
 	        this.availableBalance = source["availableBalance"];
+	        this.frozenBalance = source["frozenBalance"];
+	        this.instantBalance = source["instantBalance"];
 	        this.purchaseBalance = source["purchaseBalance"];
 	        this.remark = source["remark"];
 	        this.status = source["status"];

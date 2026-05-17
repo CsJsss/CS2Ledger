@@ -69,3 +69,51 @@ type youpinSellPageResponse struct {
 		OrderRevert any               `json:"orderRevertInfo"`
 	} `json:"data"`
 }
+
+// --- Balance ---
+
+type youpinBalanceResponse struct {
+	Code      int             `json:"code"`
+	Msg       string          `json:"msg"`
+	Timestamp int64           `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
+}
+
+type youpinBalanceData struct {
+	Balance                 string                  `json:"balance"`
+	BalanceFroze            string                  `json:"balanceFroze"`
+	ShowBalance2            bool                    `json:"showBalance2"`
+	PreSellTitle            *string                 `json:"preSellTitle"`
+	PurchaseBalance         string                  `json:"purchaseBalance"`
+	PurchaseBalanceWithdraw string                  `json:"purchaseBalanceWithdraw"`
+	PurchaseBalanceTransfer string                  `json:"purchaseBalanceTransfer"`
+	AvailableTotalAmountStr string                  `json:"availableTotalAmountStr"`
+	AvailableTotalAmount    string                  `json:"availableTotalAmount"`
+	TradeOnlyTotalAmountStr string                  `json:"tradeOnlyTotalAmountStr"`
+	TradeOnlyTotalAmount    string                  `json:"tradeOnlyTotalAmount"`
+	FrozeTotalAmountStr     string                  `json:"frozeTotalAmountStr"`
+	FrozeTotalAmount        string                  `json:"frozeTotalAmount"`
+	Currency                string                  `json:"currency"`
+	ForceUpdate             bool                    `json:"forceUpdate"`
+	ShowAccountV2           bool                    `json:"showAccountV2"`
+	WithdrawMaxMoneyLabel   *string                 `json:"withdrawMaxMoneyLabel"`
+	WithdrawMaxMoney        *string                 `json:"withdrawMaxMoney"`
+	ShowBankCardWithdraw    *string                 `json:"showBankCardWithdraw"`
+	WithdrawInfo            *string                 `json:"withdrawInfo"`
+	TipContent              string                  `json:"tipContent"`
+	List                    []youpinBalanceListItem `json:"list"`
+}
+
+type youpinBalanceListItem struct {
+	BalanceTitle       string `json:"balanceTitle"`
+	Amount             string `json:"amount"`
+	AmountStr          string `json:"amountStr"`
+	AvailableAmount    string `json:"availableAmount"`
+	AvailableAmountStr string `json:"availableAmountStr"`
+	FrozeAmount        string `json:"frozeAmount"`
+	FrozeAmountStr     string `json:"frozeAmountStr"`
+	WithdrawTitle      string `json:"withdrawTitle"`
+	QuestionDesc       string `json:"questionDesc"`
+	Type               int    `json:"type"`
+	BalanceType        int    `json:"balanceType"`
+}

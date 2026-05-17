@@ -65,7 +65,8 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 
 	return &platform.Balance{
 		Available: result.Data.MoneyAmount,
-		Frozen:    result.Data.DepositAmount,
+		Frozen:    result.Data.TradeSettleAmount,
+		Instant:   result.Data.CreditMoney,
 	}, nil
 }
 

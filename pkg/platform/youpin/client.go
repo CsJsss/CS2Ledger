@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +28,9 @@ type Client struct {
 	userID      int64
 	rateLimiter chan struct{}
 	initOnce    sync.Once
+	uk          string
+	ukTime      time.Time
+	ukMu        sync.Mutex
 }
 
 func New(token string, logger *logfx.Logger) *Client {
@@ -52,6 +56,76 @@ func New(token string, logger *logfx.Logger) *Client {
 		deviceID:    dev,
 		rateLimiter: limiter,
 	}
+}
+
+func (c *Client) ensureUK(ctx context.Context) {
+	c.ukMu.Lock()
+	uk := c.uk
+	ukTime := c.ukTime
+	c.ukMu.Unlock()
+
+	if uk != "" && time.Since(ukTime) < 30*time.Second {
+		return
+	}
+
+	fetched, err := c.fetchUK(ctx)
+	if err != nil {
+		c.Log.Warn("youpin: fetch UK failed, using random fallback", "err", err)
+		fetched = randomString(65)
+	}
+
+	c.ukMu.Lock()
+	c.uk = fetched
+	c.ukTime = time.Now()
+	c.ukMu.Unlock()
+	c.Log.Debug("youpin: UK refreshed")
+}
+
+func (c *Client) fetchUK(ctx context.Context) (string, error) {
+	crypt, err := newUUApiCrypt(randomString(16))
+	if err != nil {
+		return "", fmt.Errorf("fetch UK: %w", err)
+	}
+
+	data := `{"iud":"` + randomUUID() + `"}`
+	encryptedData, err := crypt.uuEncrypt(data)
+	if err != nil {
+		return "", fmt.Errorf("fetch UK: encrypt: %w", err)
+	}
+	encryptedAesKey, err := crypt.getEncryptedAesKey()
+	if err != nil {
+		return "", fmt.Errorf("fetch UK: encrypted aes key: %w", err)
+	}
+
+	payload := map[string]string{
+		"encryptedData":   encryptedData,
+		"encryptedAesKey": encryptedAesKey,
+	}
+	body, _ := json.Marshal(payload)
+
+	status, respBody, err := c.DoRequest(ctx, "POST", "/api/deviceW2", nil, body, c.headers())
+	if err != nil {
+		return "", fmt.Errorf("fetch UK: %w", err)
+	}
+	if status != 200 {
+		return "", fmt.Errorf("fetch UK: HTTP %d: %s", status, string(respBody))
+	}
+
+	plain, err := crypt.uuDecrypt(string(respBody))
+	if err != nil {
+		return "", fmt.Errorf("fetch UK: decrypt response: %w", err)
+	}
+
+	var result struct {
+		U string `json:"u"`
+	}
+	if err := json.Unmarshal([]byte(plain), &result); err != nil {
+		return "", fmt.Errorf("fetch UK: parse response: %w", err)
+	}
+	if result.U == "" {
+		return "", fmt.Errorf("fetch UK: empty uk in response")
+	}
+	return result.U, nil
 }
 
 // registerDevice registers the device token with YouPin.
@@ -317,7 +391,44 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 
 func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	c.registerDevice()
-	return &platform.Balance{}, nil
+	c.ensureUK(ctx)
+	c.Log.Info("youpin: fetching balance")
+	_, body, err := c.doRequest(ctx, "POST", "/api/youpin/bff/payment/v1/user/account/info", nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("youpin balance: %w", err)
+	}
+
+	var result youpinBalanceResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("youpin balance: %w", err)
+	}
+	if result.Code != 0 {
+		return nil, fmt.Errorf("youpin balance: API error code=%d", result.Code)
+	}
+
+	var data youpinBalanceData
+	// The API returns data as a JSON-stringified object
+	if err := json.Unmarshal(result.Data, &data); err != nil {
+		var s string
+		if err2 := json.Unmarshal(result.Data, &s); err2 != nil {
+			return nil, fmt.Errorf("youpin balance: parse data: %w", err)
+		}
+		if err := json.Unmarshal([]byte(s), &data); err != nil {
+			return nil, fmt.Errorf("youpin balance: parse data string: %w", err)
+		}
+	}
+
+	available, _ := strconv.ParseFloat(data.AvailableTotalAmount, 64)
+	frozen, _ := strconv.ParseFloat(data.FrozeTotalAmount, 64)
+	instant, _ := strconv.ParseFloat(data.TradeOnlyTotalAmount, 64)
+	purchase, _ := strconv.ParseFloat(data.PurchaseBalance, 64)
+
+	return &platform.Balance{
+		Available: available,
+		Frozen:    frozen,
+		Instant:   instant,
+		Purchase:  purchase,
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +478,12 @@ func (c *Client) headers() http.Header {
 	h.Set("DeviceId", c.deviceID)
 	h.Set("Gameid", "730")
 	h.Set("platform", "android")
+
+	c.ukMu.Lock()
+	if c.uk != "" {
+		h.Set("uk", c.uk)
+	}
+	c.ukMu.Unlock()
 
 	deviceInfo := fmt.Sprintf(
 		`{"deviceId":"%s","deviceType":"%s","hasSteamApp":1,"requestTag":"%s","systemName":"Android","systemVersion":"15"}`,

@@ -13,10 +13,14 @@ import (
 )
 
 type DashboardSummary struct {
-	TotalNetWorth     int64 `json:"totalNetWorth"`
-	InventoryCount    int64 `json:"inventoryCount"`
-	CompletedTrades   int64 `json:"completedTrades"`
-	TotalRentalIncome int64 `json:"totalRentalIncome"`
+	TotalNetWorth         int64 `json:"totalNetWorth"`
+	InventoryCount        int64 `json:"inventoryCount"`
+	CompletedTrades       int64 `json:"completedTrades"`
+	TotalRentalIncome     int64 `json:"totalRentalIncome"`
+	TotalAvailableBalance int64 `json:"totalAvailableBalance"`
+	TotalFrozenBalance    int64 `json:"totalFrozenBalance"`
+	TotalInstantBalance   int64 `json:"totalInstantBalance"`
+	TotalPurchaseBalance  int64 `json:"totalPurchaseBalance"`
 }
 
 type App struct {
@@ -117,6 +121,10 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 	for _, acc := range accounts {
 		inv, _ := a.svc.Inventory().List(acc.ID, "")
 		ds.InventoryCount += int64(len(inv))
+		ds.TotalAvailableBalance += acc.AvailableBalance
+		ds.TotalFrozenBalance += acc.FrozenBalance
+		ds.TotalInstantBalance += acc.InstantBalance
+		ds.TotalPurchaseBalance += acc.PurchaseBalance
 		summary, _ := a.svc.Pnl().GetSummary(acc.ID)
 		if summary != nil {
 			ds.CompletedTrades += summary.TotalTrades

@@ -10,7 +10,7 @@ type AccountInterface interface {
 	DeleteAccount(id uint) error
 	UpdateAccountInfo(id uint, name string, cookie string) error
 	UpdateAccountStatus(id uint, status string) error
-	UpdateAccountBalanceAndSyncTime(id uint, available, purchase int64, syncAt int64) error
+	UpdateAccountBalanceAndSyncTime(id uint, available, frozen, instant, purchase int64, syncAt int64) error
 }
 
 type TradeInterface interface {
