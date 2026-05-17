@@ -228,9 +228,11 @@ func (e *Engine) updateAccountMeta(accountID uint, balance *platform.Balance, ma
 		}
 	}
 	if balance != nil {
-		_ = e.orm.UpdateAccountBalanceAndSyncTime(accountID, int64(balance.Available*100), int64(balance.Purchase*100), syncAt)
+		_ = e.orm.UpdateAccountBalanceAndSyncTime(accountID,
+			int64(balance.Available*100), int64(balance.Frozen*100),
+			int64(balance.Instant*100), int64(balance.Purchase*100), syncAt)
 	} else {
-		_ = e.orm.UpdateAccountBalanceAndSyncTime(accountID, 0, 0, syncAt)
+		_ = e.orm.UpdateAccountBalanceAndSyncTime(accountID, 0, 0, 0, 0, syncAt)
 	}
 }
 

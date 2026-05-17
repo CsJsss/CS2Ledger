@@ -66,13 +66,25 @@ export default function AccountsPage() {
     },
     {
       accessorKey: "availableBalance",
-      header: "Avail. Balance",
+      header: "钱包余额",
+      meta: { align: "right" },
+      cell: (info) => <>{formatCNY(info.getValue() as number)}</>,
+    },
+    {
+      accessorKey: "frozenBalance",
+      header: "冻结余额",
+      meta: { align: "right" },
+      cell: (info) => <>{formatCNY(info.getValue() as number)}</>,
+    },
+    {
+      accessorKey: "instantBalance",
+      header: "秒到账余额",
       meta: { align: "right" },
       cell: (info) => <>{formatCNY(info.getValue() as number)}</>,
     },
     {
       accessorKey: "purchaseBalance",
-      header: "Purch. Balance",
+      header: "求购余额",
       meta: { align: "right" },
       cell: (info) => <>{formatCNY(info.getValue() as number)}</>,
     },

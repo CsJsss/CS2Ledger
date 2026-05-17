@@ -82,7 +82,7 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	return &platform.Balance{
 		Available: result.ResultData.Money,
 		Purchase:  result.ResultData.PurchaseMoney,
-		Frozen:    result.ResultData.LockMoney + result.ResultData.PurchaseFrozenMoney,
+		Frozen:    result.ResultData.LockMoney,
 	}, nil
 }
 

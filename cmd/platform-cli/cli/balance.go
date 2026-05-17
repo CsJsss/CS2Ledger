@@ -33,8 +33,8 @@ func runBalance(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "AVAILABLE\tPURCHASE\tFROZEN")
-	_, _ = fmt.Fprintf(w, "%.2f\t%.2f\t%.2f\n", b.Available, b.Purchase, b.Frozen)
+	_, _ = fmt.Fprintln(w, "AVAILABLE\tFROZEN\tINSTANT\tPURCHASE")
+	_, _ = fmt.Fprintf(w, "%.2f\t%.2f\t%.2f\t%.2f\n", b.Available, b.Frozen, b.Instant, b.Purchase)
 	_ = w.Flush()
 	return nil
 }

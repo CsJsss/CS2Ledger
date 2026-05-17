@@ -55,8 +55,44 @@ export default function DashboardPage() {
         </Box>
       )}
 
-      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0) && (
+      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0 && data.totalAvailableBalance === 0 && data.totalFrozenBalance === 0 && data.totalInstantBalance === 0 && data.totalPurchaseBalance === 0) && (
         <Grid container spacing={2} mt={1}>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">钱包余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalAvailableBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">冻结余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalFrozenBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">秒到账余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalInstantBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">求购余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalPurchaseBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0 && data.totalAvailableBalance === 0 && data.totalFrozenBalance === 0 && data.totalInstantBalance === 0 && data.totalPurchaseBalance === 0) && (
+        <Grid container spacing={2} mt={2}>
           <Grid item xs={3}>
             <Card>
               <CardContent>
