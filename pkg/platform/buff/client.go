@@ -210,6 +210,10 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	}, nil
 }
 
+func (c *Client) GetBillHistory(_ context.Context, _ ...platform.QueryOption) ([]platform.BillRecord, error) {
+	return nil, nil
+}
+
 func (c *Client) headers() http.Header {
 	h := http.Header{}
 	h.Set("User-Agent", platform.RandomUA())

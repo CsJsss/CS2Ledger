@@ -88,6 +88,10 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	}, nil
 }
 
+func (c *Client) GetBillHistory(_ context.Context, _ ...platform.QueryOption) ([]platform.BillRecord, error) {
+	return nil, nil
+}
+
 func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
 	return []platform.TradeRecord{}, nil
 }

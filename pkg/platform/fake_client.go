@@ -11,6 +11,7 @@ type FakeClient struct {
 	BuyHistory  []TradeRecord
 	SellHistory []TradeRecord
 	BalanceResp *Balance
+	BillHistory []BillRecord
 }
 
 func (f *FakeClient) Verify(_ context.Context) error {
@@ -33,4 +34,8 @@ func (f *FakeClient) GetBalance(_ context.Context) (*Balance, error) {
 		return f.BalanceResp, nil
 	}
 	return &Balance{}, nil
+}
+
+func (f *FakeClient) GetBillHistory(_ context.Context, _ ...QueryOption) ([]BillRecord, error) {
+	return f.BillHistory, nil
 }

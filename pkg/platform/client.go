@@ -48,6 +48,17 @@ type Balance struct {
 	Instant   float64 // 秒到账余额
 }
 
+// BillRecord is a unified bill/transaction record returned by platform clients.
+// ThisMoney is in cents; positive = income, negative = expense.
+// AddTime is a unix millisecond timestamp.
+type BillRecord struct {
+	TypeName  string
+	TypeID    int
+	ThisMoney int64
+	OrderNo   string
+	AddTime   int64
+}
+
 // QueryConfig holds optional parameters for history queries.
 type QueryConfig struct {
 	Since       int64             // unix ms, 0 = no filter
@@ -95,4 +106,5 @@ type Client interface {
 	GetBuyHistory(ctx context.Context, opts ...QueryOption) ([]TradeRecord, error)
 	GetSellHistory(ctx context.Context, opts ...QueryOption) ([]TradeRecord, error)
 	GetBalance(ctx context.Context) (*Balance, error)
+	GetBillHistory(ctx context.Context, opts ...QueryOption) ([]BillRecord, error)
 }
