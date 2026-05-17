@@ -53,3 +53,7 @@ frontend/.env.*.local
 # Archive
 *.zip
 *.tar.gz
+
+# AI Agent
+.superpowers/
+docs/superpowers
