@@ -60,6 +60,7 @@ func NewTestORM() (ORMInterface, *GormDB, error) {
 		&model.InventoryItem{},
 		&model.RentalRecord{},
 		&model.PnlDaily{},
+		&model.BillRecord{},
 	); err != nil {
 		_ = sqlDB.Close()
 		return nil, nil, fmt.Errorf("orm: automigrate: %w", err)

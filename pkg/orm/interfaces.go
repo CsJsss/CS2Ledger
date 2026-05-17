@@ -59,10 +59,19 @@ type RentalInterface interface {
 	FindRentalsByAccount(accountID uint) ([]model.RentalRecord, error)
 }
 
+type BillInterface interface {
+	CreateBill(*model.BillRecord) error
+	ListBillsByAccount(accountID uint, limit, offset int) ([]model.BillRecord, error)
+	ListAllBills(limit, offset int) ([]model.BillRecord, error)
+	CountBillsByAccount(accountID uint) (int64, error)
+	CountAllBills() (int64, error)
+}
+
 type ORMInterface interface {
 	AccountInterface
 	TradeInterface
 	InventoryInterface
 	PnlInterface
 	RentalInterface
+	BillInterface
 }
