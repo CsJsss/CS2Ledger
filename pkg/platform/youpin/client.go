@@ -477,7 +477,11 @@ func (c *Client) fetchBillPage(ctx context.Context, page int, since int64) ([]pl
 	records := make([]platform.BillRecord, 0, len(result.Data.DataList))
 	finished := false
 	for _, item := range result.Data.DataList {
-		rec := toBillRecord(item)
+		rec, err := toBillRecord(item)
+		if err != nil {
+			c.Log.Warn("youpin: bill item parse failed, skipping", "err", err)
+			continue
+		}
 		if rec.AddTime < since {
 			finished = true
 			continue

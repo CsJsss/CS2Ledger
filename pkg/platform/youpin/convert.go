@@ -112,9 +112,12 @@ func youpinTypeToInternal(typeID int) int {
 	}
 }
 
-func toBillRecord(item youpinBillItem) platform.BillRecord {
+func toBillRecord(item youpinBillItem) (platform.BillRecord, error) {
 	money := parseYoupinPrice(json.Number(item.ThisMoney))
-	t, _ := time.ParseInLocation("2006-01-02 15:04:05", item.AddTime, time.Local)
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", item.AddTime, time.Local)
+	if err != nil {
+		return platform.BillRecord{}, fmt.Errorf("parse addTime %q: %w", item.AddTime, err)
+	}
 	addTimeMs := t.UnixMilli()
 
 	return platform.BillRecord{
@@ -123,5 +126,5 @@ func toBillRecord(item youpinBillItem) platform.BillRecord {
 		ThisMoney: money,
 		OrderNo:   item.OrderNo,
 		AddTime:   addTimeMs,
-	}
+	}, nil
 }
