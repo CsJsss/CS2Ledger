@@ -119,3 +119,22 @@ type youpinBalanceListItem struct {
 	Type               int    `json:"type"`
 	BalanceType        int    `json:"balanceType"`
 }
+
+// --- Bill / Fund Flow ---
+
+type youpinBillItem struct {
+	TypeID    int    `json:"typeId"`
+	TypeName  string `json:"typeName"`
+	ThisMoney string `json:"thisMoney"` // 元, e.g. "-426.00"
+	OrderNo   string `json:"orderNo"`
+	AddTime   string `json:"addTime"` // "2026-05-17 11:49:30"
+}
+
+type youpinBillPageResponse struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		Total    int              `json:"total"`
+		DataList []youpinBillItem `json:"dataList"`
+	} `json:"data"`
+}

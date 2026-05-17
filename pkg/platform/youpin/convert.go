@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
@@ -94,5 +95,33 @@ func toSellTrade(o youpinSellOrder) platform.TradeRecord {
 		TotalPrice: paymentAmount,
 		Fee:        fee,
 		TradeAt:    o.FinishOrderTime,
+	}
+}
+
+// youpinTypeToInternal maps YouPin typeId to internal bill type constants.
+func youpinTypeToInternal(typeID int) int {
+	switch typeID {
+	case 3:
+		return model.BillTypePurchase
+	case 16:
+		return model.BillTypeRentalIncome
+	case 187:
+		return model.BillTypeRentalFee
+	default:
+		return model.BillTypeOther
+	}
+}
+
+func toBillRecord(item youpinBillItem) platform.BillRecord {
+	money := parseYoupinPrice(json.Number(item.ThisMoney))
+	t, _ := time.ParseInLocation("2006-01-02 15:04:05", item.AddTime, time.Local)
+	addTimeMs := t.UnixMilli()
+
+	return platform.BillRecord{
+		TypeName:  item.TypeName,
+		TypeID:    youpinTypeToInternal(item.TypeID),
+		ThisMoney: money,
+		OrderNo:   item.OrderNo,
+		AddTime:   addTimeMs,
 	}
 }

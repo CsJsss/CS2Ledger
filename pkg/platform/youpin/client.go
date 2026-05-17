@@ -420,8 +420,76 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 	}, nil
 }
 
-func (c *Client) GetBillHistory(_ context.Context, _ ...platform.QueryOption) ([]platform.BillRecord, error) {
-	return nil, nil
+func (c *Client) GetBillHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.BillRecord, error) {
+	c.registerDevice()
+	cfg := platform.ApplyQueryOpts(opts)
+	c.Log.Debug("youpin: fetching bill history", "since", cfg.Since)
+
+	var all []platform.BillRecord
+	page := 1
+	for {
+		if err := ctx.Err(); err != nil {
+			return all, err
+		}
+		items, hasMore, err := c.fetchBillPage(ctx, page, cfg.Since)
+		if err != nil {
+			return all, fmt.Errorf("youpin bill page %d: %w", page, err)
+		}
+		all = append(all, items...)
+		if cfg.Limit > 0 && len(all) >= cfg.Limit {
+			return all[:cfg.Limit], nil
+		}
+		if !hasMore {
+			break
+		}
+		page++
+		select {
+		case <-time.After(1 * time.Second):
+		case <-ctx.Done():
+			return all, ctx.Err()
+		}
+	}
+	c.Log.Info("youpin: bill history done", "total", len(all))
+	return all, nil
+}
+
+func (c *Client) fetchBillPage(ctx context.Context, page int, since int64) ([]platform.BillRecord, bool, error) {
+	body := map[string]any{
+		"pageIndex": page,
+		"pageSize":  DefaultPageSize,
+		"Sessionid": c.deviceID,
+	}
+	_, respBody, err := c.doRequest(ctx, "POST", "/api/youpin/bff/payment/v1/user/userAssets/query/page/v2", nil, body)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var result youpinBillPageResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		c.Log.Warn("youpin bill page failed", "page", page, "err", err)
+		return nil, false, err
+	}
+	if result.Code != 0 {
+		c.Log.Warn("youpin bill page: API error", "code", result.Code)
+		return nil, false, fmt.Errorf("youpin bill API error: code=%d", result.Code)
+	}
+
+	records := make([]platform.BillRecord, 0, len(result.Data.DataList))
+	finished := false
+	for _, item := range result.Data.DataList {
+		rec := toBillRecord(item)
+		if rec.AddTime < since {
+			finished = true
+			continue
+		}
+		records = append(records, rec)
+	}
+
+	hasMore := !finished && len(result.Data.DataList) == DefaultPageSize
+	if result.Data.Total > 0 {
+		hasMore = page*DefaultPageSize < result.Data.Total
+	}
+	return records, hasMore, nil
 }
 
 // ---------------------------------------------------------------------------
