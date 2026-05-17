@@ -65,7 +65,7 @@ func (e *Engine) SyncAccount(accountID uint) (*SyncResult, error) {
 		return nil, err
 	}
 
-	buys, sells, balance, warnings := e.fetchData(client, acc.LastSyncAt)
+	buys, sells, balance, billHistory, warnings := e.fetchData(client, acc.LastSyncAt)
 	result := &SyncResult{Warnings: warnings}
 
 	maxTradeMs := maxTradeAt(buys, sells)
@@ -76,6 +76,25 @@ func (e *Engine) SyncAccount(accountID uint) (*SyncResult, error) {
 	e.log.Debug("saving trades", "buys", len(buys), "sells", len(sells))
 
 	result.NewTrades = e.persistTrades(accountID, acc.Platform, buys, sells)
+
+	persistedBills := 0
+	for _, b := range billHistory {
+		rec := &model.BillRecord{
+			AccountID: accountID,
+			Platform:  acc.Platform,
+			TypeID:    b.TypeID,
+			TypeName:  b.TypeName,
+			ThisMoney: b.ThisMoney,
+			OrderNo:   b.OrderNo,
+			AddTime:   b.AddTime,
+		}
+		if err := e.orm.CreateBill(rec); err != nil {
+			e.log.Warn("create bill failed", "order_no", b.OrderNo, "err", err)
+			continue
+		}
+		persistedBills++
+	}
+	e.log.Debug("bills persisted", "count", persistedBills)
 
 	e.mu.Lock()
 	matchCount, matchErr := e.pnlSvc.RunMatching()
@@ -123,9 +142,9 @@ func (e *Engine) createAndVerify(acc *model.Account) (platform.Client, error) {
 	return client, nil
 }
 
-// fetchData concurrently pulls buy history, sell history, and balance.
+// fetchData concurrently pulls buy history, sell history, balance, and bill history.
 func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
-	[]platform.TradeRecord, []platform.TradeRecord, *platform.Balance, []string,
+	[]platform.TradeRecord, []platform.TradeRecord, *platform.Balance, []platform.BillRecord, []string,
 ) {
 	since := int64(0)
 	if lastSyncAt != nil {
@@ -136,13 +155,14 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 	var (
 		buys, sells []platform.TradeRecord
 		balance     *platform.Balance
+		billHistory []platform.BillRecord
 		mu          sync.Mutex
 		warnings    []string
 		wg          sync.WaitGroup
 	)
 	ctx := context.Background()
 
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -180,8 +200,20 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 		mu.Unlock()
 	}()
 
+	go func() {
+		defer wg.Done()
+		b, err := client.GetBillHistory(ctx, platform.WithSince(since))
+		mu.Lock()
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("bill history: %v", err))
+		}
+		e.log.Debug("bill history fetched", "count", len(b), "err", err)
+		billHistory = b
+		mu.Unlock()
+	}()
+
 	wg.Wait()
-	return buys, sells, balance, warnings
+	return buys, sells, balance, billHistory, warnings
 }
 
 // persistTrades converts platform records to models and saves them.
