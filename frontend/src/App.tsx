@@ -5,6 +5,7 @@ import InventoryPage from './pages/InventoryPage';
 import InventoryDetailPage from './pages/InventoryDetailPage';
 import CompletedTradesPage from './pages/CompletedTradesPage';
 import PnLPage from './pages/PnLPage';
+import BillPage from './pages/BillPage';
 import AccountsPage from './pages/AccountsPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="trades" element={<Navigate to="/trades/completed" replace />} />
         <Route path="trades/completed" element={<CompletedTradesPage />} />
         <Route path="pnl" element={<PnLPage />} />
+        <Route path="bill" element={<BillPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

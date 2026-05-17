@@ -39,6 +39,7 @@ const navItems = [
   { to: '/inventory', label: '持仓', icon: <InventoryIcon fontSize="small" /> },
   { to: '/trades/completed', label: '交易记录', icon: <ReceiptIcon fontSize="small" /> },
   { to: '/pnl', label: '盈亏', icon: <TrendingUpIcon fontSize="small" /> },
+  { to: '/bill', label: '资金流水', icon: <ReceiptIcon fontSize="small" /> },
   { to: '/accounts', label: '账户管理', icon: <AccountBalanceIcon fontSize="small" /> },
   { to: '/settings', label: '设置', icon: <SettingsIcon fontSize="small" /> },
 ];
