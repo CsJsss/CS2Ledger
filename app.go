@@ -197,6 +197,10 @@ func (a *App) GetRentalHistory(accountID uint, assetID string) ([]model.RentalRe
 	return a.svc.Rental().ListByAsset(accountID, assetID)
 }
 
+func (a *App) GetBillRecords(accountID uint) ([]model.BillRecord, error) {
+	return a.svc.Bill().List(accountID)
+}
+
 type UserSettings struct {
 	PriceSource   string `json:"priceSource"`
 	PriceCacheTTL int    `json:"priceCacheTtl"`
