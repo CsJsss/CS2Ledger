@@ -253,6 +253,59 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class BillRecord {
+	    ID: number;
+	    // Go type: time
+	    CreatedAt: any;
+	    // Go type: time
+	    UpdatedAt: any;
+	    // Go type: gorm
+	    DeletedAt: any;
+	    accountId: number;
+	    platform: string;
+	    typeId: number;
+	    typeName: string;
+	    thisMoney: number;
+	    orderNo: string;
+	    addTime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BillRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
+	        this.UpdatedAt = this.convertValues(source["UpdatedAt"], null);
+	        this.DeletedAt = this.convertValues(source["DeletedAt"], null);
+	        this.accountId = source["accountId"];
+	        this.platform = source["platform"];
+	        this.typeId = source["typeId"];
+	        this.typeName = source["typeName"];
+	        this.thisMoney = source["thisMoney"];
+	        this.orderNo = source["orderNo"];
+	        this.addTime = source["addTime"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class TradeRecord {
 	    ID: number;
 	    // Go type: time

@@ -16,7 +16,10 @@ func (o *ormImpl) ListBillsByAccount(accountID uint, limit, offset int) ([]model
 
 func (o *ormImpl) ListAllBills(limit, offset int) ([]model.BillRecord, error) {
 	var records []model.BillRecord
-	err := o.db.Order("add_time DESC").Limit(limit).Offset(offset).
+	err := o.db.
+		Joins("JOIN accounts ON accounts.id = bill_records.account_id").
+		Where("accounts.deleted_at IS NULL").
+		Order("add_time DESC").Limit(limit).Offset(offset).
 		Find(&records).Error
 	return records, err
 }
@@ -29,6 +32,9 @@ func (o *ormImpl) CountBillsByAccount(accountID uint) (int64, error) {
 
 func (o *ormImpl) CountAllBills() (int64, error) {
 	var count int64
-	err := o.db.Model(&model.BillRecord{}).Count(&count).Error
+	err := o.db.Model(&model.BillRecord{}).
+		Joins("JOIN accounts ON accounts.id = bill_records.account_id").
+		Where("accounts.deleted_at IS NULL").
+		Count(&count).Error
 	return count, err
 }

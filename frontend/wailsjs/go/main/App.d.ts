@@ -4,7 +4,6 @@ import {model} from '../models';
 import {trade} from '../models';
 import {main} from '../models';
 import {inventory} from '../models';
-import {platform} from '../models';
 import {pnl} from '../models';
 import {sync} from '../models';
 
@@ -14,25 +13,23 @@ export function DeleteAccount(arg1:number):Promise<void>;
 
 export function GetAccounts():Promise<Array<model.Account>>;
 
-export function GetCompletedTrades(arg1:number,arg2:number,arg3:number,arg4:string,arg5:string):Promise<trade.PaginatedGroups>;
+export function GetBillRecords(arg1:number):Promise<Array<model.BillRecord>>;
+
+export function GetCompletedTrades(arg1:number):Promise<Array<trade.CompletedTradeView>>;
 
 export function GetCompletedTradesSummary(arg1:number):Promise<trade.CompletedTradesSummary>;
 
 export function GetDashboardSummary():Promise<main.DashboardSummary>;
 
-export function GetInventory(arg1:number,arg2:string,arg3:string,arg4:number,arg5:number,arg6:string,arg7:string):Promise<inventory.PaginatedGroups>;
+export function GetInventory(arg1:number,arg2:string):Promise<Array<model.InventoryItem>>;
 
 export function GetItemDetail(arg1:number,arg2:string):Promise<inventory.ItemDetail>;
-
-export function GetMarketPrices():Promise<Array<platform.PriceInfo>>;
 
 export function GetMonthlyBreakdown(arg1:number,arg2:number):Promise<Array<pnl.MonthlyPLView>>;
 
 export function GetPnlSummary(arg1:number):Promise<pnl.PnlSummaryView>;
 
 export function GetRentalHistory(arg1:number,arg2:string):Promise<Array<model.RentalRecord>>;
-
-export function GetSettings():Promise<main.UserSettings>;
 
 export function GetUnmatchedSells(arg1:number):Promise<Array<model.TradeRecord>>;
 
@@ -41,5 +38,3 @@ export function SyncAccount(arg1:number):Promise<sync.SyncResult>;
 export function UpdateAccount(arg1:model.Account):Promise<void>;
 
 export function UpdateAccountInfo(arg1:number,arg2:string,arg3:string):Promise<void>;
-
-export function UpdateSettings(arg1:main.UserSettings):Promise<void>;

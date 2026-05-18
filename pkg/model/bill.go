@@ -2,15 +2,26 @@ package model
 
 import "gorm.io/gorm"
 
+// BillType constants are our internal classification for common transaction types.
+// Each platform converts its own type_id into one of these constants via a mapping
+// function (e.g. youpinTypeToInternal). Unrecognized types fall back to BillTypeOther.
+//
+// TypeID vs TypeName:
+//   - TypeID is our internal constant (BillTypePurchase, etc.). Frontend uses it for
+//     color coding and filtering across platforms.
+//   - TypeName is the platform's original type label (e.g. "购买饰品", "提现").
+//     When TypeID == BillTypeOther, the frontend displays TypeName as-is since there
+//     is no standardized mapping for that type.
 const (
-	BillTypePurchase     = 1
-	BillTypeSell         = 2
-	BillTypeRentalIncome = 3
-	BillTypeRentalFee    = 4
-	BillTypeRecharge     = 5
-	BillTypeWithdraw     = 6
-	BillTypeRefund       = 7
-	BillTypeOther        = 99
+	BillTypePurchase                  = 1  // 购买
+	BillTypeSell                      = 2  // 出售
+	BillTypeRentalIncome              = 3  // 收取租金
+	BillTypeRentalFee                 = 4  // 租赁服务费
+	BillTypeRecharge                  = 5  // 充值
+	BillTypeWithdraw                  = 6  // 提现
+	BillTypeRefund                    = 7  // 退款
+	BillTypeRechargForPurchaseAccount = 8  // 求购账户充值
+	BillTypeOther                     = 99 // 其他 — 回退到平台原始 TypeName 展示
 )
 
 type BillRecord struct {
