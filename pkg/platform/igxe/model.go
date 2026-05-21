@@ -1,17 +1,15 @@
 package igxe
 
-type totalMoneyResponse struct {
+// igxeResponse is a generic envelope for IGXE API responses.
+type igxeResponse[T any] struct {
 	ResultCode string `json:"ResultCode"`
-	ResultData struct {
-		Money    float64 `json:"Money"`
-		UserName string  `json:"UserName"`
-	} `json:"ResultData"`
+	ResultMsg  string `json:"ResultMsg"`
+	ResultData T      `json:"ResultData"`
 }
 
-type sellerOrderListResponse struct {
-	ResultCode string              `json:"ResultCode"`
-	ResultMsg  string              `json:"ResultMsg"`
-	ResultData sellerOrderListData `json:"ResultData"`
+type totalMoneyData struct {
+	Money    float64 `json:"Money"`
+	UserName string  `json:"UserName"`
 }
 
 type sellerOrderListData struct {

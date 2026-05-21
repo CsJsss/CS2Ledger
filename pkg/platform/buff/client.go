@@ -51,6 +51,20 @@ func (c *Client) primeSession() {
 	})
 }
 
+// parseBuff unmarshals a buffResponse envelope and checks Code is "OK".
+func parseBuff[T any](body []byte) (T, error) {
+	var result buffResponse[T]
+	if err := json.Unmarshal(body, &result); err != nil {
+		var zero T
+		return zero, err
+	}
+	if result.Code != "OK" {
+		var zero T
+		return zero, fmt.Errorf("buff API error: code=%s", result.Code)
+	}
+	return result.Data, nil
+}
+
 func (c *Client) Verify(ctx context.Context) error {
 	c.primeSession()
 	c.Log.DebugContext(ctx, "verifying")
@@ -78,8 +92,7 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	c.Log.Info("fetching buy history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionBuy, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			items, hasMore, _, err := c.fetchBuyPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
-			return items, hasMore, err
+			return c.fetchBuyPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -89,28 +102,25 @@ func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption
 	return trades, nil
 }
 
-func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
+func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	query := map[string]string{"game": "csgo", "page_num": strconv.Itoa(page), "page_size": DefaultPageSize}
 	for k, v := range extra {
 		query[k] = v
 	}
 	_, body, err := c.doRequest(ctx, "GET", "/api/market/buy_order/history", query, nil)
 	if err != nil {
-		return nil, false, 0, err
+		return nil, false, err
 	}
 
-	var result buyOrderHistoryResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, false, 0, err
-	}
-	if result.Code != "OK" {
-		return nil, false, 0, fmt.Errorf("API error: code=%s", result.Code)
+	data, err := parseBuff[tradeHistoryData[buyOrderItem]](body)
+	if err != nil {
+		return nil, false, err
 	}
 
 	sinceSec := since / 1000
-	trades := make([]platform.TradeRecord, 0, len(result.Data.Items))
+	trades := make([]platform.TradeRecord, 0, len(data.Items))
 	finished := false
-	for _, item := range result.Data.Items {
+	for _, item := range data.Items {
 		if item.TransactTime < sinceSec {
 			finished = true
 			continue
@@ -118,37 +128,34 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 		if tradeState == platform.TradeStateCompleted && item.State != StatusSuccess {
 			continue
 		}
-		trades = append(trades, toBuyTrade(item, result.Data.GoodsInfos))
+		trades = append(trades, toBuyTrade(item, data.GoodsInfos))
 	}
-	c.Log.Debug("buy history", "page", page, "items", len(trades), "total_pages", result.Data.TotalPages, "total", result.Data.Total)
-	if len(result.Data.Items) == 0 || finished || (result.Data.TotalPages > 0 && page >= result.Data.TotalPages) {
-		return trades, false, result.Data.TotalPages, nil
+	c.Log.Debug("buy history", "page", page, "items", len(trades), "total_pages", data.TotalPages, "total", data.Total)
+	if len(data.Items) == 0 || finished || (data.TotalPages > 0 && page >= data.TotalPages) {
+		return trades, false, nil
 	}
-	return trades, true, result.Data.TotalPages, nil
+	return trades, true, nil
 }
 
-func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, int, error) {
+func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, tradeState platform.TradeState, extra map[string]string) ([]platform.TradeRecord, bool, error) {
 	query := map[string]string{"appid": "730", "mode": "1", "page_num": strconv.Itoa(page), "page_size": DefaultPageSize}
 	for k, v := range extra {
 		query[k] = v
 	}
 	_, body, err := c.doRequest(ctx, "GET", "/api/market/sell_order/history", query, nil)
 	if err != nil {
-		return nil, false, 0, err
+		return nil, false, err
 	}
 
-	var result sellOrderHistoryResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, false, 0, err
-	}
-	if result.Code != "OK" {
-		return nil, false, 0, fmt.Errorf("buff API error: code=%s", result.Code)
+	data, err := parseBuff[tradeHistoryData[sellOrderItem]](body)
+	if err != nil {
+		return nil, false, err
 	}
 
 	sinceSec := since / 1000
-	trades := make([]platform.TradeRecord, 0, len(result.Data.Items))
+	trades := make([]platform.TradeRecord, 0, len(data.Items))
 	finished := false
-	for _, item := range result.Data.Items {
+	for _, item := range data.Items {
 		if item.CreateTime < sinceSec {
 			finished = true
 			continue
@@ -156,13 +163,13 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		if tradeState == platform.TradeStateCompleted && item.State != StatusSuccess {
 			continue
 		}
-		trades = append(trades, toSellTrade(item, result.Data.GoodsInfos))
+		trades = append(trades, toSellTrade(item, data.GoodsInfos))
 	}
-	c.Log.Debug("sell history", "page", page, "items", len(trades), "total_pages", result.Data.TotalPages, "total", result.Data.Total)
-	if len(result.Data.Items) == 0 || finished || (result.Data.TotalPages > 0 && page >= result.Data.TotalPages) {
-		return trades, false, result.Data.TotalPages, nil
+	c.Log.Debug("sell history", "page", page, "items", len(trades), "total_pages", data.TotalPages, "total", data.Total)
+	if len(data.Items) == 0 || finished || (data.TotalPages > 0 && page >= data.TotalPages) {
+		return trades, false, nil
 	}
-	return trades, true, result.Data.TotalPages, nil
+	return trades, true, nil
 }
 
 func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
@@ -171,8 +178,7 @@ func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOptio
 	c.Log.Info("fetching sell history", "since", cfg.Since)
 	trades, err := platform.FetchAllPages(ctx, c.Log, c.Name, model.DirectionSell, 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.TradeRecord, bool, error) {
-			items, hasMore, _, err := c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
-			return items, hasMore, err
+			return c.fetchSellPage(ctx, page, cfg.Since, cfg.TradeState, cfg.ExtraParams)
 		},
 	)
 	if err != nil {
@@ -190,17 +196,14 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 		return nil, fmt.Errorf("buff balance: %w", err)
 	}
 
-	var result balanceResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	data, err := parseBuff[balanceData](body)
+	if err != nil {
 		return nil, err
 	}
-	if result.Code != "OK" {
-		return nil, fmt.Errorf("buff balance: code=%s", result.Code)
-	}
 
-	available, _ := strconv.ParseFloat(result.Data.CashAmount, 64)
-	purchase, _ := strconv.ParseFloat(result.Data.SecurityAmount, 64)
-	frozen, _ := strconv.ParseFloat(result.Data.FrozenAmount, 64)
+	available, _ := strconv.ParseFloat(data.CashAmount, 64)
+	purchase, _ := strconv.ParseFloat(data.SecurityAmount, 64)
+	frozen, _ := strconv.ParseFloat(data.FrozenAmount, 64)
 
 	return &platform.Balance{
 		Available: available,

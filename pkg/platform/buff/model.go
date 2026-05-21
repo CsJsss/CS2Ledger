@@ -2,6 +2,21 @@ package buff
 
 // --- Shared ---
 
+// buffResponse is a generic envelope for BUFF API responses.
+type buffResponse[T any] struct {
+	Code string  `json:"code"`
+	Msg  *string `json:"msg,omitempty"`
+	Data T       `json:"data"`
+}
+
+// tradeHistoryData is shared by buy/sell order history responses.
+type tradeHistoryData[T any] struct {
+	Items      []T                 `json:"items"`
+	GoodsInfos map[string]goodInfo `json:"goods_infos"`
+	TotalPages int                 `json:"total_page"`
+	Total      int                 `json:"total_count"`
+}
+
 type goodInfo struct {
 	Name           string   `json:"name"`
 	ShortName      string   `json:"short_name"`
@@ -74,18 +89,6 @@ type userInfoResponse struct {
 
 // --- Buy history ---
 
-type buyOrderHistoryResponse struct {
-	Code string              `json:"code"`
-	Data buyOrderHistoryData `json:"data"`
-}
-
-type buyOrderHistoryData struct {
-	Items      []buyOrderItem      `json:"items"`
-	GoodsInfos map[string]goodInfo `json:"goods_infos"`
-	TotalPages int                 `json:"total_page"`
-	Total      int                 `json:"total_count"`
-}
-
 type buyOrderItem struct {
 	ID           string    `json:"id"`
 	State        string    `json:"state"`
@@ -103,18 +106,6 @@ type buyOrderItem struct {
 
 // --- Sell history ---
 
-type sellOrderHistoryResponse struct {
-	Code string               `json:"code"`
-	Data sellOrderHistoryData `json:"data"`
-}
-
-type sellOrderHistoryData struct {
-	Items      []sellOrderItem     `json:"items"`
-	GoodsInfos map[string]goodInfo `json:"goods_infos"`
-	TotalPages int                 `json:"total_page"`
-	Total      int                 `json:"total_count"`
-}
-
 type sellOrderItem struct {
 	ID           string    `json:"id"`
 	GoodsID      int64     `json:"goods_id"`
@@ -130,12 +121,6 @@ type sellOrderItem struct {
 }
 
 // --- Balance ---
-
-type balanceResponse struct {
-	Code string      `json:"code"`
-	Msg  *string     `json:"msg"`
-	Data balanceData `json:"data"`
-}
 
 type balanceData struct {
 	CashAmount                     string               `json:"cash_amount"`

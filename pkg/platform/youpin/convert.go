@@ -101,10 +101,23 @@ func toSellTrade(o youpinSellOrder) platform.TradeRecord {
 // youpinTypeToInternal maps YouPin typeId to internal bill type constants.
 func youpinTypeToInternal(typeID int) int {
 	switch typeID {
+	case 1:
+		return model.BillTypeRecharge
+	// 2: 提现; 44: 求购账户提现
+	case 2, 44:
+		return model.BillTypeWithdraw
 	case 3:
 		return model.BillTypePurchase
+	case 4:
+		return model.BillTypeRefund
+	case 5:
+		return model.BillTypeSell
 	case 16:
 		return model.BillTypeRentalIncome
+	case 25:
+		return model.BillTypeRenewalRental
+	case 43:
+		return model.BillTypeRechargForPurchaseAccount
 	case 187:
 		return model.BillTypeRentalFee
 	default:
@@ -120,9 +133,15 @@ func toBillRecord(item youpinBillItem) (platform.BillRecord, error) {
 	}
 	addTimeMs := t.UnixMilli()
 
+	typeID := youpinTypeToInternal(item.TypeID)
+	typeName := model.BillTypeName(typeID)
+	if typeName == "" {
+		typeName = item.TypeName
+	}
+
 	return platform.BillRecord{
-		TypeName:  item.TypeName,
-		TypeID:    youpinTypeToInternal(item.TypeID),
+		TypeName:  typeName,
+		TypeID:    typeID,
 		ThisMoney: money,
 		OrderNo:   item.OrderNo,
 		AddTime:   addTimeMs,

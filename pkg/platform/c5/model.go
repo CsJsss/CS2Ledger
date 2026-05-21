@@ -16,15 +16,16 @@ func isCompletedStatus(s int) bool {
 	return s == StatusCompleted || s == StatusSuccessV2
 }
 
-// Balance v2
-
-type c5BalanceV2Response struct {
-	Success      bool            `json:"success"`
-	ErrorCode    int             `json:"errorCode"`
-	ErrorMsg     string          `json:"errorMsg"`
-	ErrorCodeStr string          `json:"errorCodeStr"`
-	Data         c5BalanceV2Data `json:"data"`
+// c5Response is a generic envelope for C5 API responses.
+type c5Response[T any] struct {
+	Success      bool   `json:"success"`
+	ErrorCode    int    `json:"errorCode"`
+	ErrorMsg     string `json:"errorMsg"`
+	ErrorCodeStr string `json:"errorCodeStr"`
+	Data         T      `json:"data"`
 }
+
+// Balance v2
 
 type c5BalanceV2Data struct {
 	UserID            string  `json:"userId"`
@@ -36,14 +37,6 @@ type c5BalanceV2Data struct {
 }
 
 // Buyer order v2 (POST /merchant/order/v2/buyer/status)
-
-type c5BuyerOrderResponse struct {
-	Success      bool             `json:"success"`
-	ErrorCode    int              `json:"errorCode"`
-	ErrorMsg     string           `json:"errorMsg"`
-	ErrorCodeStr string           `json:"errorCodeStr"`
-	Data         c5BuyerOrderData `json:"data"`
-}
 
 type c5BuyerOrderData struct {
 	Total string         `json:"total"`
@@ -69,14 +62,6 @@ type c5BuyerOrder struct {
 
 // Seller order v1 (GET /merchant/order/v1/list)
 
-type c5SellerOrderResponse struct {
-	Success      bool              `json:"success"`
-	ErrorCode    int               `json:"errorCode"`
-	ErrorMsg     string            `json:"errorMsg"`
-	ErrorCodeStr string            `json:"errorCodeStr"`
-	Data         c5SellerOrderData `json:"data"`
-}
-
 type c5SellerOrderData struct {
 	Total string          `json:"total"`
 	Pages int             `json:"pages"`
@@ -101,14 +86,6 @@ type c5OrderConfirmInfo struct {
 }
 
 // Order detail v2 (GET /merchant/order/v2/buy/detail)
-
-type c5BuyerOrderDetailResponse struct {
-	Success      bool               `json:"success"`
-	ErrorCode    int                `json:"errorCode"`
-	ErrorMsg     string             `json:"errorMsg"`
-	ErrorCodeStr string             `json:"errorCodeStr"`
-	Data         c5BuyerOrderDetail `json:"data"`
-}
 
 type c5BuyerOrderDetail struct {
 	OrderID        string          `json:"orderId"`

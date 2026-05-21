@@ -51,15 +51,15 @@ func RandomUA() string {
 
 // FetchAllPages calls fetchFn for each page until exhausted or ctx cancelled.
 // When limit > 0, pagination stops early once limit records are collected.
-func FetchAllPages(
+func FetchAllPages[T any](
 	ctx context.Context,
 	log *logfx.Logger,
 	name, direction string,
 	pageSleep time.Duration,
 	limit int,
-	fetchFn func(ctx context.Context, page int) (items []TradeRecord, hasMore bool, err error),
-) ([]TradeRecord, error) {
-	var all []TradeRecord
+	fetchFn func(ctx context.Context, page int) (items []T, hasMore bool, err error),
+) ([]T, error) {
+	var all []T
 	page := 1
 	for {
 		if err := ctx.Err(); err != nil {
@@ -86,4 +86,73 @@ func FetchAllPages(
 			return all, ctx.Err()
 		}
 	}
+}
+
+// FetchByTimeWindows paginates through sliding time windows (e.g. 30-day API limits),
+// calling FetchAllPages within each window.
+func FetchByTimeWindows[T any](
+	ctx context.Context,
+	log *logfx.Logger,
+	name, direction string,
+	cfg QueryConfig,
+	maxWindowDays int,
+	pageFn func(ctx context.Context, page int, windowStart, windowEnd time.Time) ([]T, bool, error),
+) ([]T, error) {
+	var all []T
+	windowEnd := time.Now()
+	consecutiveEmpty := 0
+
+	var sinceTime time.Time
+	if cfg.Since > 0 {
+		sinceTime = time.UnixMilli(cfg.Since)
+	}
+
+	for {
+		windowStart := windowEnd.AddDate(0, 0, -maxWindowDays)
+		if !sinceTime.IsZero() && windowStart.Before(sinceTime) {
+			windowStart = sinceTime
+		}
+		if !windowEnd.After(windowStart) {
+			break
+		}
+
+		remaining := cfg.Limit
+		if remaining > 0 {
+			remaining -= len(all)
+			if remaining <= 0 {
+				break
+			}
+		}
+
+		items, err := FetchAllPages(ctx, log, name, direction, 500*time.Millisecond, remaining,
+			func(ctx context.Context, page int) ([]T, bool, error) {
+				return pageFn(ctx, page, windowStart, windowEnd)
+			},
+		)
+		if err != nil {
+			return all, err
+		}
+		all = append(all, items...)
+
+		log.Info(name+": time window done", "direction", direction,
+			"window", windowStart.Format("2006-01-02 15:04")+"~"+windowEnd.Format("2006-01-02 15:04"),
+			"count", len(items), "total", len(all))
+
+		if !sinceTime.IsZero() && !windowStart.After(sinceTime) {
+			break
+		}
+
+		if len(items) == 0 {
+			consecutiveEmpty++
+			if consecutiveEmpty >= 12 {
+				break
+			}
+		} else {
+			consecutiveEmpty = 0
+		}
+		windowEnd = windowStart
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	return all, nil
 }

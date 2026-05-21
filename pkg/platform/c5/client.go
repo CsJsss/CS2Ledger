@@ -28,6 +28,20 @@ func New(apiKey string, logger *logfx.Logger) *Client {
 	}
 }
 
+// parseC5 unmarshals a c5Response envelope and checks Success.
+func parseC5[T any](body []byte) (T, error) {
+	var result c5Response[T]
+	if err := json.Unmarshal(body, &result); err != nil {
+		var zero T
+		return zero, err
+	}
+	if !result.Success {
+		var zero T
+		return zero, fmt.Errorf("c5 API error: code=%d msg=%s", result.ErrorCode, result.ErrorMsg)
+	}
+	return result.Data, nil
+}
+
 func (c *Client) Verify(ctx context.Context) error {
 	c.Log.Info("c5: verifying")
 	_, body, err := c.doRequest(ctx, "GET", "/merchant/account/v2/balance", nil, nil)
@@ -36,13 +50,9 @@ func (c *Client) Verify(ctx context.Context) error {
 		return fmt.Errorf("c5 verify: %w", err)
 	}
 
-	var result c5BalanceV2Response
-	if err := json.Unmarshal(body, &result); err != nil {
-		return fmt.Errorf("c5 verify: %w", err)
-	}
-	if !result.Success {
-		c.Log.Warn("c5: verify invalid credential", "errorCode", result.ErrorCode, "errorMsg", result.ErrorMsg)
-		return fmt.Errorf("c5 verify: credential invalid (code=%d msg=%s)", result.ErrorCode, result.ErrorMsg)
+	if _, err := parseC5[c5BalanceV2Data](body); err != nil {
+		c.Log.Warn("c5: verify invalid credential", "err", err)
+		return fmt.Errorf("c5 verify: credential invalid: %w", err)
 	}
 	c.Log.Info("c5: verify ok")
 	return nil
@@ -55,18 +65,15 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 		return nil, fmt.Errorf("c5 balance: %w", err)
 	}
 
-	var result c5BalanceV2Response
-	if err := json.Unmarshal(body, &result); err != nil {
+	data, err := parseC5[c5BalanceV2Data](body)
+	if err != nil {
 		return nil, fmt.Errorf("c5 balance: %w", err)
-	}
-	if !result.Success {
-		return nil, fmt.Errorf("c5 balance: API error code=%d msg=%s", result.ErrorCode, result.ErrorMsg)
 	}
 
 	return &platform.Balance{
-		Available: result.Data.MoneyAmount,
-		Frozen:    result.Data.TradeSettleAmount,
-		Instant:   result.Data.CreditMoney,
+		Available: data.MoneyAmount,
+		Frozen:    data.TradeSettleAmount,
+		Instant:   data.CreditMoney,
 	}, nil
 }
 
@@ -99,18 +106,15 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 		return nil, false, err
 	}
 
-	var result c5BuyerOrderResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	data, err := parseC5[c5BuyerOrderData](respBody)
+	if err != nil {
 		return nil, false, err
-	}
-	if !result.Success {
-		return nil, false, fmt.Errorf("c5 buyer order API error: code=%d msg=%s", result.ErrorCode, result.ErrorMsg)
 	}
 
 	sinceSec := since / 1000
-	filtered := make([]c5BuyerOrder, 0, len(result.Data.List))
+	filtered := make([]c5BuyerOrder, 0, len(data.List))
 	finished := false
-	for _, item := range result.Data.List {
+	for _, item := range data.List {
 		if item.CreateTime < sinceSec {
 			finished = true
 			continue
@@ -123,10 +127,10 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 
 	trades := c.enrichBuyerOrders(ctx, filtered)
 
-	if len(result.Data.List) == 0 || finished {
+	if len(data.List) == 0 || finished {
 		return trades, false, nil
 	}
-	hasMore := page < result.Data.Pages
+	hasMore := page < data.Pages
 	return trades, hasMore, nil
 }
 
@@ -161,14 +165,7 @@ func (c *Client) getOrderDetail(ctx context.Context, orderID string) (c5BuyerOrd
 	if err != nil {
 		return c5BuyerOrderDetail{}, err
 	}
-	var resp c5BuyerOrderDetailResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return c5BuyerOrderDetail{}, err
-	}
-	if !resp.Success {
-		return c5BuyerOrderDetail{}, fmt.Errorf("c5 order detail API error for %s: code=%d msg=%s", orderID, resp.ErrorCode, resp.ErrorMsg)
-	}
-	return resp.Data, nil
+	return parseC5[c5BuyerOrderDetail](body)
 }
 
 func (c *Client) GetSellHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
@@ -203,17 +200,14 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		return nil, false, err
 	}
 
-	var result c5SellerOrderResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	data, err := parseC5[c5SellerOrderData](body)
+	if err != nil {
 		return nil, false, err
 	}
-	if !result.Success {
-		return nil, false, fmt.Errorf("c5 seller order API error: code=%d msg=%s", result.ErrorCode, result.ErrorMsg)
-	}
 
-	trades := make([]platform.TradeRecord, 0, len(result.Data.List))
+	trades := make([]platform.TradeRecord, 0, len(data.List))
 	finished := false
-	for _, item := range result.Data.List {
+	for _, item := range data.List {
 		tradeAt := int64(0)
 		if item.OrderConfirmInfo != nil {
 			tradeAt = item.OrderConfirmInfo.OrderCreateTime * 1000
@@ -228,10 +222,10 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		trades = append(trades, toSellerTrade(item))
 	}
 
-	if len(result.Data.List) == 0 || finished {
+	if len(data.List) == 0 || finished {
 		return trades, false, nil
 	}
-	hasMore := page < result.Data.Pages
+	hasMore := page < data.Pages
 	return trades, hasMore, nil
 }
 
