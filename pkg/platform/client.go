@@ -1,5 +1,7 @@
 package platform
 
+//go:generate go tool mockery
+
 import (
 	"context"
 
@@ -101,6 +103,9 @@ func ApplyQueryOpts(opts []QueryOption) QueryConfig {
 }
 
 // Client is the interface all platform clients must implement.
+//
+//mockery:generate: true
+//mockery:filename: client_mock_test.go
 type Client interface {
 	Verify(ctx context.Context) error
 	GetBuyHistory(ctx context.Context, opts ...QueryOption) ([]TradeRecord, error)
