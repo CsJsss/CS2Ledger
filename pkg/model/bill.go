@@ -9,20 +9,39 @@ import "gorm.io/gorm"
 // TypeID vs TypeName:
 //   - TypeID is our internal constant (BillTypePurchase, etc.). Frontend uses it for
 //     color coding and filtering across platforms.
-//   - TypeName is the platform's original type label (e.g. "购买饰品", "提现").
-//     When TypeID == BillTypeOther, the frontend displays TypeName as-is since there
-//     is no standardized mapping for that type.
+//   - TypeName is a unified label from BillTypeName(). When TypeID == BillTypeOther,
+//     the converter falls back to the platform's original type name.
 const (
 	BillTypePurchase                  = 1  // 购买
 	BillTypeSell                      = 2  // 出售
 	BillTypeRentalIncome              = 3  // 收取租金
-	BillTypeRentalFee                 = 4  // 租赁服务费
-	BillTypeRecharge                  = 5  // 充值
-	BillTypeWithdraw                  = 6  // 提现
-	BillTypeRefund                    = 7  // 退款
-	BillTypeRechargForPurchaseAccount = 8  // 求购账户充值
+	BillTypeRenewalRental             = 4  // 收取续租资金
+	BillTypeRentalFee                 = 5  // 租赁服务费
+	BillTypeRecharge                  = 6  // 充值
+	BillTypeWithdraw                  = 7  // 提现
+	BillTypeRefund                    = 8  // 退款
+	BillTypeRechargForPurchaseAccount = 9  // 求购账户充值
 	BillTypeOther                     = 99 // 其他 — 回退到平台原始 TypeName 展示
 )
+
+var billTypeNames = map[int]string{
+	BillTypePurchase:                  "购买",
+	BillTypeSell:                      "出售",
+	BillTypeRentalIncome:              "收取租金",
+	BillTypeRenewalRental:             "收取续租资金",
+	BillTypeRentalFee:                 "租赁服务费",
+	BillTypeRecharge:                  "充值",
+	BillTypeWithdraw:                  "提现",
+	BillTypeRefund:                    "退款",
+	BillTypeRechargForPurchaseAccount: "求购账户充值",
+}
+
+func BillTypeName(t int) string {
+	if name, ok := billTypeNames[t]; ok {
+		return name
+	}
+	return ""
+}
 
 type BillRecord struct {
 	gorm.Model
