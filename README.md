@@ -76,7 +76,7 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
 
 ## Examples
 
-见 [examples/](img/examples) 目录。
+见 [examples/](examples/) 目录。
 
 ## 技术栈
 
