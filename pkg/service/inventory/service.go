@@ -39,18 +39,20 @@ var appSortFields = map[string]bool{
 	"unrealizedPl":  true,
 }
 
-// InventoryGroup represents a grouped set of inventory items by item name.
-// MarketPrice and UnrealizedPl are nil until a price source is integrated.
+// InventoryGroup represents a grouped set of inventory items by item name + exterior.
 type InventoryGroup struct {
-	ItemName      string                `json:"itemName"`
-	WeaponType    string                `json:"weaponType"`
-	Count         int                   `json:"count"`
-	TotalQuantity int64                 `json:"totalQuantity"`
-	TotalBuyPrice int64                 `json:"totalBuyPrice"`
-	AvgBuyPrice   int64                 `json:"avgBuyPrice"`
-	MarketPrice   *int64                `json:"marketPrice,omitempty"`
-	UnrealizedPl  *int64                `json:"unrealizedPl,omitempty"`
-	Instances     []model.InventoryItem `json:"instances"`
+	ItemName       string                `json:"itemName"`
+	Exterior       string                `json:"exterior"`
+	CsqaqGoodsID   int                   `json:"csqaqGoodsId,omitempty"`
+	MarketHashName string                `json:"marketHashName"`
+	WeaponType     string                `json:"weaponType"`
+	Count          int                   `json:"count"`
+	TotalQuantity  int64                 `json:"totalQuantity"`
+	TotalBuyPrice  int64                 `json:"totalBuyPrice"`
+	AvgBuyPrice    int64                 `json:"avgBuyPrice"`
+	MarketPrice    *int64                `json:"marketPrice,omitempty"`
+	UnrealizedPl   *int64                `json:"unrealizedPl,omitempty"`
+	Instances      []model.InventoryItem `json:"instances"`
 }
 
 type PaginatedGroups struct {
@@ -65,6 +67,7 @@ type InventoryInterface interface {
 	GetItemDetail(accountID uint, assetID string) (*ItemDetail, error)
 	ListGroups(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error)
 	SetPriceProvider(p PriceProvider)
+	SetPriceSource(source string)
 }
 
 // PriceProvider is a subset of market.MarketInterface to avoid import cycles.
@@ -73,9 +76,10 @@ type PriceProvider interface {
 }
 
 type service struct {
-	log    *logfx.Logger
-	orm    orm.ORMInterface
-	prices PriceProvider
+	log         *logfx.Logger
+	orm         orm.ORMInterface
+	prices      PriceProvider
+	priceSource string
 }
 
 func NewService(log *logfx.Logger, orm orm.ORMInterface) *service {
@@ -87,6 +91,11 @@ func (s *service) SetPriceProvider(p PriceProvider) {
 	s.prices = p
 }
 
+// SetPriceSource sets which price to use (buff/youpin/steam).
+func (s *service) SetPriceSource(source string) {
+	s.priceSource = source
+}
+
 func (s *service) List(accountID uint, status string) ([]model.InventoryItem, error) {
 	return s.orm.FindInventoryByAccount(accountID, status)
 }
@@ -96,20 +105,20 @@ func (s *service) ListGroups(accountID uint, status, weaponType string, page, pa
 		page = 1
 	}
 	if pageSize < 1 || pageSize > 200 {
-		pageSize = 50
+		pageSize = 20
 	}
 	if sortDir != "asc" && sortDir != "desc" {
 		sortDir = "asc"
 	}
 
-	// SQL-level sort: paginate group names via ORM, keep only current page
+	// SQL-level sort: paginate group keys via ORM, keep only current page
 	if col, ok := sqlSortBy[sortBy]; ok {
 		offset := (page - 1) * pageSize
-		names, total, err := s.orm.FindInventoryGroupNames(accountID, status, weaponType, offset, pageSize, col, sortDir)
+		keys, total, err := s.orm.FindInventoryGroupKeys(accountID, status, weaponType, offset, pageSize, col, sortDir)
 		if err != nil {
 			return nil, err
 		}
-		groups, err := s.buildGroups(accountID, names)
+		groups, err := s.buildGroups(accountID, keys)
 		if err != nil {
 			return nil, err
 		}
@@ -119,11 +128,11 @@ func (s *service) ListGroups(accountID uint, status, weaponType string, page, pa
 
 	// App-level sort: fetch all groups, sort in Go, then paginate
 	if appSortFields[sortBy] {
-		names, _, err := s.orm.FindInventoryGroupNames(accountID, status, weaponType, 0, 10000, "item_name", "asc")
+		keys, _, err := s.orm.FindInventoryGroupKeys(accountID, status, weaponType, 0, 10000, "item_name", "asc")
 		if err != nil {
 			return nil, err
 		}
-		allGroups, err := s.buildGroups(accountID, names)
+		allGroups, err := s.buildGroups(accountID, keys)
 		if err != nil {
 			return nil, err
 		}
@@ -158,42 +167,54 @@ func (s *service) enrichWithPrices(groups []InventoryGroup) {
 	}
 	for i := range groups {
 		g := &groups[i]
-		mhn := ""
-		if len(g.Instances) > 0 {
-			mhn = g.Instances[0].MarketHashName
-		}
-		if mhn == "" || g.AvgBuyPrice == 0 {
+		if g.MarketHashName == "" || g.AvgBuyPrice == 0 {
 			continue
 		}
-		info, ok := priceMap[mhn]
+		info, ok := priceMap[g.MarketHashName]
 		if !ok {
 			continue
 		}
-		mp := int64(info.BuffPrice * 100) // default buff price, 元→分
+		var mp int64
+		switch s.priceSource {
+		case "youpin":
+			mp = int64(info.YoupinPrice * 100)
+		case "steam":
+			mp = int64(info.SteamPrice * 100)
+		default:
+			mp = int64(info.BuffPrice * 100)
+		}
 		g.MarketPrice = &mp
 		upl := (mp - g.AvgBuyPrice) * g.TotalQuantity
 		g.UnrealizedPl = &upl
 	}
 }
 
-func (s *service) buildGroups(accountID uint, names []string) ([]InventoryGroup, error) {
-	if len(names) == 0 {
+func (s *service) buildGroups(accountID uint, keys []orm.InventoryGroupKey) ([]InventoryGroup, error) {
+	if len(keys) == 0 {
 		return nil, nil
 	}
-	instances, err := s.orm.FindInventoryByItemNames(accountID, names)
+	instances, err := s.orm.FindInventoryByGroupKeys(accountID, keys)
 	if err != nil {
 		return nil, err
 	}
 
-	byName := make(map[string][]model.InventoryItem)
+	type groupKey struct {
+		itemName string
+		exterior string
+	}
+	byKey := make(map[groupKey][]model.InventoryItem)
 	for _, inst := range instances {
-		byName[inst.ItemName] = append(byName[inst.ItemName], inst)
+		k := groupKey{itemName: inst.ItemName, exterior: inst.Exterior}
+		byKey[k] = append(byKey[k], inst)
 	}
 
-	groups := make([]InventoryGroup, 0, len(names))
-	for _, name := range names {
-		insts := byName[name]
+	groups := make([]InventoryGroup, 0, len(keys))
+	for _, k := range keys {
+		gk := groupKey{itemName: k.ItemName, exterior: k.Exterior}
+		insts := byKey[gk]
 		wt := ""
+		mhn := ""
+		goodsID := 0
 		var totalQty int64
 		var totalBuyPrice int64
 		for _, inst := range insts {
@@ -205,6 +226,12 @@ func (s *service) buildGroups(accountID uint, names []string) ([]InventoryGroup,
 			if inst.BuyTrade != nil {
 				totalBuyPrice += inst.BuyTrade.UnitPrice * qty
 			}
+			if mhn == "" {
+				mhn = inst.MarketHashName
+			}
+			if goodsID == 0 {
+				goodsID = inst.CsqaqGoodsID
+			}
 		}
 		var avgBuyPrice int64
 		if totalQty > 0 {
@@ -214,14 +241,16 @@ func (s *service) buildGroups(accountID uint, names []string) ([]InventoryGroup,
 			wt = insts[0].WeaponType
 		}
 		groups = append(groups, InventoryGroup{
-			ItemName:      name,
-			WeaponType:    wt,
-			Count:         len(insts),
-			TotalQuantity: totalQty,
-			TotalBuyPrice: totalBuyPrice,
-			AvgBuyPrice:   avgBuyPrice,
-			// MarketPrice and UnrealizedPl left nil until price source is integrated
-			Instances: insts,
+			ItemName:       k.ItemName,
+			Exterior:       k.Exterior,
+			CsqaqGoodsID:   goodsID,
+			MarketHashName: mhn,
+			WeaponType:     wt,
+			Count:          len(insts),
+			TotalQuantity:  totalQty,
+			TotalBuyPrice:  totalBuyPrice,
+			AvgBuyPrice:    avgBuyPrice,
+			Instances:      insts,
 		})
 	}
 	return groups, nil

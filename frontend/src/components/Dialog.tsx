@@ -1,10 +1,5 @@
-import { ReactNode } from "react";
-import {
-  Dialog as MuiDialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
+import { ReactNode } from 'react';
+import { Dialog as MuiDialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
 interface DialogProps {
   open: boolean;

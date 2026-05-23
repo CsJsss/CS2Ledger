@@ -17,8 +17,8 @@ import {
   GetMarketPrices,
   GetSettings,
   UpdateSettings,
-} from "../../wailsjs/go/main/App";
-import type { model, trade, pnl, sync, inventory, main } from "../../wailsjs/go/models";
+} from '../../wailsjs/go/main/App';
+import type { model, trade, pnl, sync, inventory, main } from '../../wailsjs/go/models';
 
 export {
   GetAccounts,

@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { GetCompletedTrades } from "../lib/wails";
-import { useAccounts } from "./useAccounts";
+import { useQuery } from '@tanstack/react-query';
+import { GetCompletedTrades } from '../lib/wails';
+import { useAccounts } from './useAccounts';
 
 interface UseCompletedTradesOpts {
   page?: number;
@@ -9,15 +9,18 @@ interface UseCompletedTradesOpts {
   sortDir?: string;
 }
 
-export function useCompletedTrades(selectedAccountId: number | null, opts?: UseCompletedTradesOpts) {
+export function useCompletedTrades(
+  selectedAccountId: number | null,
+  opts?: UseCompletedTradesOpts,
+) {
   const { data: accounts = [] } = useAccounts();
   const page = opts?.page ?? 1;
   const pageSize = opts?.pageSize ?? 50;
-  const sortBy = opts?.sortBy ?? "itemName";
-  const sortDir = opts?.sortDir ?? "asc";
+  const sortBy = opts?.sortBy ?? 'itemName';
+  const sortDir = opts?.sortDir ?? 'asc';
 
   return useQuery({
-    queryKey: ["completedTrades", selectedAccountId ?? 0, page, pageSize, sortBy, sortDir],
+    queryKey: ['completedTrades', selectedAccountId ?? 0, page, pageSize, sortBy, sortDir],
     queryFn: () => {
       // selectedAccountId=null → pass 0 to backend (all-accounts query)
       const accountId = selectedAccountId ?? 0;

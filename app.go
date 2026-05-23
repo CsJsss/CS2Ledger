@@ -15,16 +15,17 @@ import (
 )
 
 type DashboardSummary struct {
-	TotalNetWorth         int64 `json:"totalNetWorth"`
-	InventoryCount        int64 `json:"inventoryCount"`
-	InventoryCost         int64 `json:"inventoryCost"`
-	InventoryMarketValue  int64 `json:"inventoryMarketValue"`
-	CompletedTrades       int64 `json:"completedTrades"`
-	TotalRentalIncome     int64 `json:"totalRentalIncome"`
-	TotalAvailableBalance int64 `json:"totalAvailableBalance"`
-	TotalFrozenBalance    int64 `json:"totalFrozenBalance"`
-	TotalInstantBalance   int64 `json:"totalInstantBalance"`
-	TotalPurchaseBalance  int64 `json:"totalPurchaseBalance"`
+	RealizedPl            int64  `json:"realizedPl"`
+	InventoryCount        int64  `json:"inventoryCount"`
+	InventoryCost         int64  `json:"inventoryCost"`
+	InventoryMarketValue  int64  `json:"inventoryMarketValue"`
+	PriceSource           string `json:"priceSource"`
+	CompletedTrades       int64  `json:"completedTrades"`
+	TotalRentalIncome     int64  `json:"totalRentalIncome"`
+	TotalAvailableBalance int64  `json:"totalAvailableBalance"`
+	TotalFrozenBalance    int64  `json:"totalFrozenBalance"`
+	TotalInstantBalance   int64  `json:"totalInstantBalance"`
+	TotalPurchaseBalance  int64  `json:"totalPurchaseBalance"`
 }
 
 type App struct {
@@ -141,12 +142,20 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 
 	// Fetch market prices once for all accounts
 	prices, _ := a.svc.Market().GetAllPrices()
+	cfg := a.svc.Config()
 	priceMap := make(map[string]int64, len(prices))
 	for _, p := range prices {
-		priceMap[p.MarketHashName] = int64(p.BuffPrice * 100) // 元→分
+		switch cfg.PriceSource {
+		case "youpin":
+			priceMap[p.MarketHashName] = int64(p.YoupinPrice * 100)
+		case "steam":
+			priceMap[p.MarketHashName] = int64(p.SteamPrice * 100)
+		default:
+			priceMap[p.MarketHashName] = int64(p.BuffPrice * 100)
+		}
 	}
 
-	ds := &DashboardSummary{}
+	ds := &DashboardSummary{PriceSource: cfg.PriceSource}
 	for _, acc := range accounts {
 		inv, _ := a.svc.Inventory().List(acc.ID, "")
 		ds.InventoryCount += int64(len(inv))
@@ -173,7 +182,7 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 		summary, _ := a.svc.Pnl().GetSummary(acc.ID)
 		if summary != nil {
 			ds.CompletedTrades += summary.TotalTrades
-			ds.TotalNetWorth += summary.TotalNetPl
+			ds.RealizedPl += summary.TotalNetPl
 		}
 	}
 	return ds, nil
@@ -219,5 +228,6 @@ func (a *App) UpdateSettings(s *UserSettings) error {
 		PriceSource: s.PriceSource,
 		CacheTTLMin: s.PriceCacheTTL,
 	})
+	a.svc.Inventory().SetPriceSource(s.PriceSource)
 	return nil
 }

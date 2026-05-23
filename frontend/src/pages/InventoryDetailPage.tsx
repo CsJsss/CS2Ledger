@@ -1,47 +1,51 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { type ColumnDef } from "@tanstack/react-table";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
-import Skeleton from "@mui/material/Skeleton";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Grid from "@mui/material/Grid";
-import ErrorBanner from "../components/ErrorBanner";
-import EmptyState from "../components/EmptyState";
-import SortableTable from "../components/SortableTable";
-import { useItemDetail } from "../hooks/useItemDetail";
-import { formatCNY } from "../lib/format";
-import type { model } from "../lib/wails";
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { type ColumnDef } from '@tanstack/react-table';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Chip from '@mui/material/Chip';
+import Skeleton from '@mui/material/Skeleton';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid';
+import ErrorBanner from '../components/ErrorBanner';
+import EmptyState from '../components/EmptyState';
+import SortableTable from '../components/SortableTable';
+import { useItemDetail } from '../hooks/useItemDetail';
+import { formatCNY } from '../lib/format';
+import IconButton from '@mui/material/IconButton';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import Tooltip from '@mui/material/Tooltip';
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
+import type { model } from '../lib/wails';
 
 const statusLabel: Record<string, string> = {
-  in_inventory: "In Storage",
-  listed: "Listed",
-  rented: "Rented",
+  in_inventory: 'In Storage',
+  listed: 'Listed',
+  rented: 'Rented',
 };
 
 const rentalColumns: ColumnDef<model.RentalRecord>[] = [
   {
-    accessorKey: "startAt",
-    header: "Start",
+    accessorKey: 'startAt',
+    header: 'Start',
     cell: (info) => new Date((info.getValue() as number) * 1000).toLocaleDateString(),
   },
   {
-    accessorKey: "endAt",
-    header: "End",
+    accessorKey: 'endAt',
+    header: 'End',
     cell: (info) => new Date((info.getValue() as number) * 1000).toLocaleDateString(),
   },
   {
-    accessorKey: "durationDays",
-    header: "Days",
-    meta: { align: "right" },
+    accessorKey: 'durationDays',
+    header: 'Days',
+    meta: { align: 'right' },
   },
   {
-    accessorKey: "income",
-    header: "Income",
-    meta: { align: "right" },
+    accessorKey: 'income',
+    header: 'Income',
+    meta: { align: 'right' },
     cell: (info) => formatCNY(info.getValue() as number),
   },
 ];
@@ -56,14 +60,16 @@ export default function InventoryDetailPage() {
   return (
     <Box>
       <Button
-        onClick={() => { void navigate("/inventory"); }}
-        sx={{ mb: 2, textTransform: "none" }}
+        onClick={() => {
+          void navigate('/inventory');
+        }}
+        sx={{ mb: 2, textTransform: 'none' }}
       >
         &larr; Back to Inventory
       </Button>
 
       {isLoading && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Skeleton variant="rectangular" height={128} sx={{ borderRadius: 1 }} />
           <Skeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />
         </Box>
@@ -72,7 +78,10 @@ export default function InventoryDetailPage() {
       {error && !dismissed && (
         <ErrorBanner
           message={`Failed to load item detail: ${String(error)}`}
-          onRetry={() => { setDismissed(false); void refetch(); }}
+          onRetry={() => {
+            setDismissed(false);
+            void refetch();
+          }}
           onDismiss={() => setDismissed(true)}
         />
       )}
@@ -82,27 +91,47 @@ export default function InventoryDetailPage() {
       )}
 
       {!isLoading && !error && detail && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Card>
             <CardContent>
-              <Typography variant="h6">{detail.item.itemName}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6">{detail.item.itemName}</Typography>
+                {detail.item.csqaqGoodsId ? (
+                  <Tooltip title="csqaq">
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        BrowserOpenURL(`https://www.csqaq.com/goods/${detail.item.csqaqGoodsId}`)
+                      }
+                    >
+                      <OpenInNewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                ) : null}
+              </Box>
               <Grid container spacing={2} mt={1}>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Asset ID: {detail.item.assetId}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Asset ID: {detail.item.assetId}
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
-                  <Typography variant="body2" color="text.secondary">Exterior: {detail.item.exterior || "--"}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Exterior: {detail.item.exterior || '--'}
+                  </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Chip
                     label={statusLabel[detail.item.status] ?? detail.item.status}
                     size="small"
-                    color={detail.item.status === "listed" ? "success" : "default"}
+                    color={detail.item.status === 'listed' ? 'success' : 'default'}
                   />
                 </Grid>
-                {detail.item.status === "listed" && detail.item.listedPrice && (
+                {detail.item.status === 'listed' && detail.item.listedPrice && (
                   <Grid item xs={6}>
-                    <Typography variant="body2" color="text.secondary">Listed at: {formatCNY(detail.item.listedPrice)}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Listed at: {formatCNY(detail.item.listedPrice)}
+                    </Typography>
                   </Grid>
                 )}
               </Grid>
@@ -111,28 +140,38 @@ export default function InventoryDetailPage() {
 
           {detail.rentalHistory && detail.rentalHistory.length > 0 ? (
             <Box>
-              <Typography variant="h6" gutterBottom>Rental History</Typography>
+              <Typography variant="h6" gutterBottom>
+                Rental History
+              </Typography>
               <Grid container spacing={2} mb={2}>
                 <Grid item xs={4}>
                   <Card variant="outlined">
-                    <CardContent sx={{ textAlign: "center", py: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Total Days</Typography>
+                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Days
+                      </Typography>
                       <Typography variant="h6">{detail.rentalSummary?.totalDays ?? 0}</Typography>
                     </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={4}>
                   <Card variant="outlined">
-                    <CardContent sx={{ textAlign: "center", py: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Total Income</Typography>
-                      <Typography variant="h6">{formatCNY(detail.rentalSummary?.totalIncome ?? 0)}</Typography>
+                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Income
+                      </Typography>
+                      <Typography variant="h6">
+                        {formatCNY(detail.rentalSummary?.totalIncome ?? 0)}
+                      </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
                 <Grid item xs={4}>
                   <Card variant="outlined">
-                    <CardContent sx={{ textAlign: "center", py: 2 }}>
-                      <Typography variant="body2" color="text.secondary">Rent Count</Typography>
+                    <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Rent Count
+                      </Typography>
                       <Typography variant="h6">{detail.rentalSummary?.rentCount ?? 0}</Typography>
                     </CardContent>
                   </Card>
@@ -148,7 +187,9 @@ export default function InventoryDetailPage() {
           ) : (
             <Card variant="outlined">
               <CardContent>
-                <Typography color="text.secondary" textAlign="center">No rental history</Typography>
+                <Typography color="text.secondary" textAlign="center">
+                  No rental history
+                </Typography>
               </CardContent>
             </Card>
           )}

@@ -2,6 +2,9 @@ export namespace inventory {
 	
 	export class InventoryGroup {
 	    itemName: string;
+	    exterior: string;
+	    csqaqGoodsId?: number;
+	    marketHashName: string;
 	    weaponType: string;
 	    count: number;
 	    totalQuantity: number;
@@ -18,6 +21,9 @@ export namespace inventory {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.itemName = source["itemName"];
+	        this.exterior = source["exterior"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
+	        this.marketHashName = source["marketHashName"];
 	        this.weaponType = source["weaponType"];
 	        this.count = source["count"];
 	        this.totalQuantity = source["totalQuantity"];
@@ -138,10 +144,11 @@ export namespace inventory {
 export namespace main {
 	
 	export class DashboardSummary {
-	    totalNetWorth: number;
+	    realizedPl: number;
 	    inventoryCount: number;
 	    inventoryCost: number;
 	    inventoryMarketValue: number;
+	    priceSource: string;
 	    completedTrades: number;
 	    totalRentalIncome: number;
 	    totalAvailableBalance: number;
@@ -155,10 +162,11 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.totalNetWorth = source["totalNetWorth"];
+	        this.realizedPl = source["realizedPl"];
 	        this.inventoryCount = source["inventoryCount"];
 	        this.inventoryCost = source["inventoryCost"];
 	        this.inventoryMarketValue = source["inventoryMarketValue"];
+	        this.priceSource = source["priceSource"];
 	        this.completedTrades = source["completedTrades"];
 	        this.totalRentalIncome = source["totalRentalIncome"];
 	        this.totalAvailableBalance = source["totalAvailableBalance"];
@@ -255,6 +263,7 @@ export namespace model {
 	    classId?: string;
 	    instanceId?: string;
 	    goodsId?: number;
+	    csqaqGoodsId?: number;
 	    marketHashName?: string;
 	    itemName?: string;
 	    iconUrl?: string;
@@ -305,6 +314,7 @@ export namespace model {
 	        this.classId = source["classId"];
 	        this.instanceId = source["instanceId"];
 	        this.goodsId = source["goodsId"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
 	        this.marketHashName = source["marketHashName"];
 	        this.itemName = source["itemName"];
 	        this.iconUrl = source["iconUrl"];
@@ -412,6 +422,7 @@ export namespace model {
 	    classId?: string;
 	    instanceId?: string;
 	    goodsId?: number;
+	    csqaqGoodsId?: number;
 	    marketHashName?: string;
 	    itemName?: string;
 	    iconUrl?: string;
@@ -453,6 +464,7 @@ export namespace model {
 	        this.classId = source["classId"];
 	        this.instanceId = source["instanceId"];
 	        this.goodsId = source["goodsId"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
 	        this.marketHashName = source["marketHashName"];
 	        this.itemName = source["itemName"];
 	        this.iconUrl = source["iconUrl"];

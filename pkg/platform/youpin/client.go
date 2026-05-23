@@ -13,6 +13,7 @@ import (
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
+	"github.com/CsJsss/CS2Ledger/pkg/platform/httpclient"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
@@ -26,7 +27,6 @@ type Client struct {
 	deviceToken string
 	deviceID    string
 	userID      int64
-	rateLimiter chan struct{}
 	initOnce    sync.Once
 	uk          string
 	ukTime      time.Time
@@ -35,26 +35,14 @@ type Client struct {
 
 func New(token string, logger *logfx.Logger) *Client {
 	dev := randomString(24)
-	limiter := make(chan struct{}, 3)
-	for i := 0; i < 3; i++ {
-		limiter <- struct{}{}
-	}
-	go func() {
-		ticker := time.NewTicker(500 * time.Millisecond)
-		defer ticker.Stop()
-		for range ticker.C {
-			select {
-			case limiter <- struct{}{}:
-			default:
-			}
-		}
-	}()
 	return &Client{
-		BaseClient:  platform.NewBaseClient(platform.PlatformYoupin, "https://api.youpin898.com", logger),
+		BaseClient: platform.NewBaseClient(
+			platform.PlatformYoupin, "https://api.youpin898.com", logger,
+			httpclient.WithRateLimit(3, 2),
+		),
 		token:       token,
 		deviceToken: dev,
 		deviceID:    dev,
-		rateLimiter: limiter,
 	}
 }
 
@@ -436,14 +424,8 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
-// doRequest enforces rate limiting then delegates to BaseClient.DoRequest.
+// doRequest serializes the body and delegates to BaseClient (rate limiting is handled by httpclient).
 func (c *Client) doRequest(ctx context.Context, method, path string, query map[string]string, reqBody map[string]any) (int, []byte, error) {
-	select {
-	case <-c.rateLimiter:
-	case <-ctx.Done():
-		return 0, nil, ctx.Err()
-	}
-
 	var bodyBytes []byte
 	if reqBody != nil {
 		bodyBytes, _ = json.Marshal(reqBody)

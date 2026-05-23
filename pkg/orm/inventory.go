@@ -2,6 +2,7 @@ package orm
 
 import (
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -40,9 +41,9 @@ func (o *ormImpl) FindInventoryByAssetID(accountID uint, assetID string) (*model
 	return &item, err
 }
 
-// FindInventoryGroupNames returns paginated distinct item names for an account.
+// FindInventoryGroupKeys returns paginated distinct (item_name, exterior) pairs for an account.
 // Pass accountID=0 to query across all accounts.
-func (o *ormImpl) FindInventoryGroupNames(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]string, int64, error) {
+func (o *ormImpl) FindInventoryGroupKeys(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error) {
 	var total int64
 	q := o.db.Model(&model.InventoryItem{})
 	if accountID != 0 {
@@ -56,12 +57,12 @@ func (o *ormImpl) FindInventoryGroupNames(accountID uint, status, weaponType str
 	if weaponType != "" {
 		q = q.Where("weapon_type = ?", weaponType)
 	}
-	if err := q.Select("COUNT(DISTINCT item_name)").Scan(&total).Error; err != nil {
+	if err := q.Select("COUNT(DISTINCT item_name || '|' || COALESCE(exterior, ''))").Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	var names []string
-	q2 := o.db.Model(&model.InventoryItem{}).Select("item_name")
+	var keys []InventoryGroupKey
+	q2 := o.db.Model(&model.InventoryItem{}).Select("item_name, COALESCE(exterior, '') AS exterior")
 	if accountID != 0 {
 		q2 = q2.Where("account_id = ?", accountID)
 	} else {
@@ -73,20 +74,28 @@ func (o *ormImpl) FindInventoryGroupNames(accountID uint, status, weaponType str
 	if weaponType != "" {
 		q2 = q2.Where("weapon_type = ?", weaponType)
 	}
-	err := q2.Group("item_name").Order(sortBy+" "+sortDir).
+	err := q2.Group("item_name, exterior").Order(sortBy + " " + sortDir).
 		Offset(offset).Limit(limit).
-		Pluck("item_name", &names).Error
-	return names, total, err
+		Find(&keys).Error
+	return keys, total, err
 }
 
-// FindInventoryByItemNames returns inventory items matching the given item names.
+// FindInventoryByGroupKeys returns inventory items matching the given (item_name, exterior) pairs.
 // Pass accountID=0 to query across all accounts.
-func (o *ormImpl) FindInventoryByItemNames(accountID uint, itemNames []string) ([]model.InventoryItem, error) {
-	if len(itemNames) == 0 {
+func (o *ormImpl) FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error) {
+	if len(keys) == 0 {
 		return nil, nil
 	}
+
+	var conditions []string
+	var args []any
+	for _, k := range keys {
+		conditions = append(conditions, "(item_name = ? AND COALESCE(exterior, '') = ?)")
+		args = append(args, k.ItemName, k.Exterior)
+	}
+
 	var items []model.InventoryItem
-	q := o.db.Where("item_name IN ?", itemNames)
+	q := o.db.Where("("+strings.Join(conditions, " OR ")+")", args...)
 	if accountID != 0 {
 		q = q.Where("account_id = ?", accountID)
 	} else {

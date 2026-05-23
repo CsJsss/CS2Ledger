@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { UpdateAccountInfo } from "../lib/wails";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { UpdateAccountInfo } from '../lib/wails';
 
 export function useUpdateAccount() {
   const queryClient = useQueryClient();
@@ -7,7 +7,7 @@ export function useUpdateAccount() {
     mutationFn: ({ id, name, cookie }: { id: number; name: string; cookie: string }) =>
       UpdateAccountInfo(id, name, cookie),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      void queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });
 }

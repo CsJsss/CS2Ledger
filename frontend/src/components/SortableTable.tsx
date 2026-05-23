@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -9,21 +9,21 @@ import {
   type ColumnDef,
   type FilterFn,
   type SortingState,
-} from "@tanstack/react-table";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableSortLabel from "@mui/material/TableSortLabel";
-import TablePagination from "@mui/material/TablePagination";
-import Paper from "@mui/material/Paper";
+} from '@tanstack/react-table';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TableSortLabel from '@mui/material/TableSortLabel';
+import TablePagination from '@mui/material/TablePagination';
+import Paper from '@mui/material/Paper';
 
-declare module "@tanstack/react-table" {
+declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
-    align?: "left" | "right" | "center";
+    align?: 'left' | 'right' | 'center';
   }
 }
 
@@ -69,20 +69,22 @@ export default function SortableTable<T>({
     columns,
     state: {
       sorting,
-      globalFilter: globalFilter ?? "",
-      ...(pagination ? { pagination: { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize } } : {}),
+      globalFilter: globalFilter ?? '',
+      ...(pagination
+        ? { pagination: { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize } }
+        : {}),
     },
     onSortingChange: (updater) => {
-      const next = typeof updater === "function" ? updater(sorting) : updater;
+      const next = typeof updater === 'function' ? updater(sorting) : updater;
       setSorting(next);
       if (manualSorting && onSortingChange && next.length > 0) {
-        onSortingChange(next[0].id, next[0].desc ? "desc" : "asc");
+        onSortingChange(next[0].id, next[0].desc ? 'desc' : 'asc');
       } else if (manualSorting && onSortingChange && next.length === 0) {
-        onSortingChange("itemName", "asc");
+        onSortingChange('itemName', 'asc');
       }
     },
     onGlobalFilterChange: onGlobalFilterChange ?? (() => {}),
-    globalFilterFn: globalFilterFn ?? "auto",
+    globalFilterFn: globalFilterFn ?? 'auto',
     getCoreRowModel: getCoreRowModel(),
     getRowId,
     meta,
@@ -119,10 +121,10 @@ export default function SortableTable<T>({
                           active={!!sorted}
                           direction={sorted || undefined}
                           onClick={() => {
-                            if (sorted === "desc") {
+                            if (sorted === 'desc') {
                               header.column.clearSorting();
                             } else {
-                              header.column.toggleSorting(sorted === "asc");
+                              header.column.toggleSorting(sorted === 'asc');
                             }
                           }}
                         >
@@ -142,14 +144,11 @@ export default function SortableTable<T>({
               <TableRow
                 key={row.id}
                 hover
-                sx={onRowClick ? { cursor: "pointer" } : undefined}
+                sx={onRowClick ? { cursor: 'pointer' } : undefined}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    align={cell.column.columnDef.meta?.align}
-                  >
+                  <TableCell key={cell.id} align={cell.column.columnDef.meta?.align}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

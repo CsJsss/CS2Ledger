@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS market_prices (
 );
 
 CREATE INDEX IF NOT EXISTS idx_market_prices_updated ON market_prices(updated_at);
+
+ALTER TABLE trade_records ADD COLUMN csqaq_goods_id INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE inventory ADD COLUMN csqaq_goods_id INTEGER NOT NULL DEFAULT 0;

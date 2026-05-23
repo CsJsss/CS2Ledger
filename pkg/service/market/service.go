@@ -2,6 +2,7 @@ package market
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
@@ -21,6 +22,7 @@ type MarketService struct {
 	ttlMin      int
 	provider    platform.PriceProvider
 	stopRefresh chan struct{}
+	refreshMu   sync.Mutex
 }
 
 func NewMarketService(
@@ -146,11 +148,19 @@ func (s *MarketService) refreshLoop(stop chan struct{}) {
 }
 
 func (s *MarketService) refreshAll(ctx context.Context) {
+	if !s.refreshMu.TryLock() {
+		s.log.Debug("market: refresh skipped, already in progress")
+		return
+	}
+	defer s.refreshMu.Unlock()
+
 	s.ensureProvider()
 	if s.provider == nil {
 		s.log.Debug("market: refresh skipped, no csqaq account")
 		return
 	}
+
+	s.resolveMissingGoods(ctx)
 
 	rows, err := s.db.Table("inventory").
 		Select("DISTINCT market_hash_name").
@@ -189,6 +199,125 @@ func (s *MarketService) refreshAll(ctx context.Context) {
 		s.log.Info("market: refresh complete", "fetched", len(infos))
 	} else {
 		s.log.Warn("market: refresh got no prices from API")
+	}
+}
+
+func (s *MarketService) resolveMissingGoods(ctx context.Context) {
+	type unresolvedKey struct {
+		ItemName string
+		Exterior string
+	}
+
+	seen := make(map[unresolvedKey]bool)
+	var unresolved []unresolvedKey
+
+	for _, table := range []string{"inventory", "trade_records"} {
+		rows, err := s.db.Table(table).
+			Select("DISTINCT item_name, exterior").
+			Where("csqaq_goods_id = 0 AND item_name != ''").
+			Rows()
+		if err != nil {
+			continue
+		}
+		for rows.Next() {
+			var k unresolvedKey
+			if err := rows.Scan(&k.ItemName, &k.Exterior); err != nil {
+				continue
+			}
+			if !seen[k] {
+				seen[k] = true
+				unresolved = append(unresolved, k)
+			}
+		}
+		_ = rows.Close()
+	}
+
+	if len(unresolved) == 0 {
+		return
+	}
+
+	s.log.Info("market: resolving missing csqaq goods", "count", len(unresolved))
+
+	for i, k := range unresolved {
+		// Rate-limit: wait before every request (including first) to avoid 429
+		if i > 0 {
+			select {
+			case <-time.After(3000 * time.Millisecond):
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// If either table already has a good_id for this item+exterior (e.g. resolved
+		// in a previous run but new rows appeared in the other table), reuse it.
+		if goodID, mhn := s.findExistingGoods(k); goodID != 0 {
+			s.log.Debug("market: reused existing goods", "itemName", k.ItemName, "goodID", goodID)
+			s.updateGoods(k, goodID, mhn)
+			continue
+		}
+
+		goodID, mhn, err := s.provider.ResolveGoodsInfo(ctx, k.ItemName, k.Exterior)
+		if err != nil {
+			s.log.Warn("market: resolve goods failed", "itemName", k.ItemName, "exterior", k.Exterior, "err", err)
+			continue
+		}
+		if goodID == 0 {
+			s.log.Debug("market: resolve goods no match", "itemName", k.ItemName, "exterior", k.Exterior)
+			continue
+		}
+
+		s.log.Debug("market: resolved goods", "itemName", k.ItemName, "goodID", goodID, "mhn", mhn)
+		s.updateGoods(k, goodID, mhn)
+	}
+}
+
+func (s *MarketService) findExistingGoods(k struct {
+	ItemName string
+	Exterior string
+}) (int, string) {
+	var goodID int
+	var mhn string
+	for _, table := range []string{"inventory", "trade_records"} {
+		row := s.db.Table(table).
+			Select("csqaq_goods_id, market_hash_name").
+			Where("item_name = ? AND exterior = ? AND csqaq_goods_id != 0", k.ItemName, k.Exterior).
+			Row()
+		if row == nil {
+			continue
+		}
+		if err := row.Scan(&goodID, &mhn); err != nil {
+			continue
+		}
+		if goodID != 0 {
+			return goodID, mhn
+		}
+	}
+	return 0, ""
+}
+
+func (s *MarketService) updateGoods(k struct {
+	ItemName string
+	Exterior string
+}, goodID int, mhn string) {
+	for _, table := range []string{"inventory", "trade_records"} {
+		if err := s.db.Table(table).
+			Where("item_name = ? AND exterior = ? AND csqaq_goods_id = 0", k.ItemName, k.Exterior).
+			Update("csqaq_goods_id", goodID).Error; err != nil {
+			s.log.Warn("market: update csqaq_goods_id failed", "table", table, "err", err)
+		}
+		if mhn != "" {
+			if err := s.db.Table(table).
+				Where("item_name = ? AND exterior = ? AND market_hash_name = ''", k.ItemName, k.Exterior).
+				Update("market_hash_name", mhn).Error; err != nil {
+				s.log.Warn("market: update market_hash_name failed", "table", table, "err", err)
+			}
+		}
 	}
 }
 

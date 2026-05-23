@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { GetUnmatchedSells } from "../lib/wails";
-import { useAccounts } from "./useAccounts";
+import { useQuery } from '@tanstack/react-query';
+import { GetUnmatchedSells } from '../lib/wails';
+import { useAccounts } from './useAccounts';
 
 export function useUnmatchedSells(selectedAccountId: number | null) {
   const { data: accounts = [] } = useAccounts();
   return useQuery({
-    queryKey: ["unmatchedSells", selectedAccountId ?? "all"],
+    queryKey: ['unmatchedSells', selectedAccountId ?? 'all'],
     queryFn: async () => {
       if (selectedAccountId != null) {
         return GetUnmatchedSells(selectedAccountId);
