@@ -11,10 +11,8 @@ export function useSyncAccount() {
         void queryClient.invalidateQueries({ queryKey: ['completedTradesSummary'] });
         void queryClient.invalidateQueries({ queryKey: ['pnlSummary'] });
       }
-      if (result.NewPnl > 0) {
-        void queryClient.invalidateQueries({ queryKey: ['inventory'] });
-        void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      }
+      void queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       void queryClient.invalidateQueries({ queryKey: ['accounts'] });
     },
   });

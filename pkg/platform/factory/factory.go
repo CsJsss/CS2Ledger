@@ -61,7 +61,7 @@ func (f *PlatformFactory) New(platformName, credential string, logger *logfx.Log
 func (f *PlatformFactory) NewPriceProvider(platformName, credential string) (platform.PriceProvider, error) {
 	switch strings.ToLower(platformName) {
 	case platform.PlatformCsqaq:
-		return csqaq.New(credential), nil
+		return csqaq.New(credential, nil), nil
 	default:
 		return nil, fmt.Errorf("unknown price provider: %s", platformName)
 	}

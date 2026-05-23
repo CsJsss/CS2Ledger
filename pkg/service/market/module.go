@@ -19,6 +19,7 @@ type MarketInterface interface {
 	SetProvider(p platform.PriceProvider)
 	SetConfig(cfg PriceConfig)
 	StartAutoRefresh(ctx context.Context)
+	EnsureProvider()
 }
 
 var Module = fx.Module("market",

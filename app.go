@@ -64,7 +64,7 @@ func (a *App) GetAccounts() ([]model.Account, error) {
 func (a *App) CreateAccount(name, platformName, cookie string) (*model.Account, error) {
 	acc, err := a.svc.Account().Create(name, platformName, cookie)
 	if err == nil && platformName == platform.PlatformCsqaq {
-		// New csqaq account added — trigger immediate price refresh
+		a.svc.Market().EnsureProvider()
 		a.svc.Market().StartAutoRefresh(a.ctx)
 	}
 	return acc, err
@@ -82,6 +82,7 @@ func (a *App) UpdateAccountInfo(id uint, name string, cookie string) error {
 	accs, _ := a.svc.Account().List()
 	for _, acc := range accs {
 		if acc.ID == id && acc.Platform == platform.PlatformCsqaq {
+			a.svc.Market().EnsureProvider()
 			a.svc.Market().StartAutoRefresh(a.ctx)
 			break
 		}
@@ -94,7 +95,11 @@ func (a *App) DeleteAccount(id uint) error {
 }
 
 func (a *App) SyncAccount(accountID uint) (*sync.SyncResult, error) {
-	return a.syncEngine.SyncAccount(accountID)
+	result, err := a.syncEngine.SyncAccount(accountID)
+	if err == nil {
+		a.svc.Market().StartAutoRefresh(a.ctx)
+	}
+	return result, err
 }
 
 func (a *App) GetInventory(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*inventory.PaginatedGroups, error) {

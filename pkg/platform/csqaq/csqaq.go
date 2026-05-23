@@ -12,6 +12,16 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/platform/httpclient"
 )
 
+type Logger interface {
+	Debug(msg string, args ...any)
+	Warn(msg string, args ...any)
+}
+
+type nopLogger struct{}
+
+func (nopLogger) Debug(string, ...any) {}
+func (nopLogger) Warn(string, ...any)  {}
+
 const (
 	apiBase       = "https://api.csqaq.com/api/v1"
 	pricePath     = "/goods/getPriceByMarketHashName"
@@ -22,9 +32,13 @@ const (
 type Client struct {
 	apiToken string
 	client   *httpclient.Client
+	log      Logger
 }
 
-func New(apiToken string) *Client {
+func New(apiToken string, log Logger) *Client {
+	if log == nil {
+		log = nopLogger{}
+	}
 	return &Client{
 		apiToken: apiToken,
 		client: httpclient.New(
@@ -32,6 +46,7 @@ func New(apiToken string) *Client {
 			httpclient.WithName("csqaq"),
 			httpclient.WithNoRetry(),
 		),
+		log: log,
 	}
 }
 
@@ -87,10 +102,37 @@ var exteriorENToCN = map[string]string{
 // ResolveGoodsInfo queries csqaq's get_good_id API by item name and matches
 // the result by exterior. Returns the csqaq goods ID and market_hash_name.
 func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior string) (int, string, error) {
+	// Try with full item name first.
+	search := itemName
+	c.log.Debug("csqaq: resolve goods search", "search", search)
+	id, mhn, _ := c.searchGoods(ctx, search, itemName, exterior)
+	if id != 0 {
+		return id, mhn, nil
+	}
+
+	// Fallback: search with skin name + exterior, e.g. "黑色魅影 (久经沙场)".
+	if exterior != "" {
+		if idx := strings.LastIndex(itemName, "|"); idx >= 0 {
+			skin := strings.TrimSpace(itemName[idx+1:])
+			search = skin + " (" + exterior + ")"
+			c.log.Debug("csqaq: fallback search", "search", search)
+			id, mhn, _ = c.searchGoods(ctx, search, itemName, exterior)
+			if id != 0 {
+				c.log.Debug("csqaq: fallback matched", "goodID", id, "mhn", mhn)
+				return id, mhn, nil
+			}
+		}
+	}
+
+	c.log.Debug("csqaq: resolve goods no match", "itemName", itemName, "exterior", exterior)
+	return 0, "", nil
+}
+
+func (c *Client) searchGoods(ctx context.Context, search, itemName, exterior string) (int, string, error) {
 	body, err := json.Marshal(map[string]any{
 		"page_index": 1,
 		"page_size":  20,
-		"search":     itemName,
+		"search":     search,
 	})
 	if err != nil {
 		return 0, "", fmt.Errorf("csqaq: marshal get_good_id request: %w", err)
@@ -117,10 +159,15 @@ func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior string
 	}
 
 	id, mhn := matchGoods(ar.Data.Data, itemName, exterior)
-	if id == 0 {
-		return 0, "", nil
-	}
 	return id, mhn, nil
+}
+
+// normalizeName removes spaces and normalizes parentheses for fuzzy matching.
+func normalizeName(s string) string {
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "（", "(")
+	s = strings.ReplaceAll(s, "）", ")")
+	return s
 }
 
 func matchGoods(data map[string]goodsInfo, itemName, exterior string) (int, string) {
@@ -135,6 +182,8 @@ func matchGoods(data map[string]goodsInfo, itemName, exterior string) (int, stri
 		}
 	}
 
+	normItem := normalizeName(itemName)
+
 	// Multiple results — try to disambiguate by exterior.
 	if exterior != "" {
 		cnExt := exterior
@@ -147,17 +196,16 @@ func matchGoods(data map[string]goodsInfo, itemName, exterior string) (int, stri
 		}
 
 		for _, v := range data {
-			name := v.Name
-			if strings.HasSuffix(name, "("+cnExt+")") || strings.HasSuffix(name, "("+enExt+")") ||
-				strings.HasSuffix(name, "（"+cnExt+"）") || strings.HasSuffix(name, "（"+enExt+"）") {
+			name := normalizeName(v.Name)
+			if strings.HasSuffix(name, "("+cnExt+")") || strings.HasSuffix(name, "("+enExt+")") {
 				return v.ID, v.MarketHashName
 			}
 		}
 	}
 
-	// Fallback: try exact match on itemName alone.
+	// Fallback: try normalized item name match.
 	for _, v := range data {
-		if strings.TrimSpace(v.Name) == strings.TrimSpace(itemName) {
+		if normalizeName(v.Name) == normItem {
 			return v.ID, v.MarketHashName
 		}
 	}

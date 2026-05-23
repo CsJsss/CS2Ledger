@@ -23,6 +23,7 @@ type MarketService struct {
 	provider    platform.PriceProvider
 	stopRefresh chan struct{}
 	refreshMu   sync.Mutex
+	refreshWg   sync.WaitGroup
 }
 
 func NewMarketService(
@@ -56,6 +57,11 @@ func (s *MarketService) SetConfig(cfg PriceConfig) {
 	s.StartAutoRefresh(context.Background())
 }
 
+// EnsureProvider lazily creates the price provider from the first csqaq account in DB.
+func (s *MarketService) EnsureProvider() {
+	s.ensureProvider()
+}
+
 // ensureProvider lazily creates the price provider from the first csqaq account in DB.
 func (s *MarketService) ensureProvider() {
 	if s.provider != nil {
@@ -66,7 +72,7 @@ func (s *MarketService) ensureProvider() {
 		s.log.Debug("market: no csqaq account found, prices unavailable")
 		return
 	}
-	s.provider = csqaq.New(acc.Cookie) // cookie field stores the API token
+	s.provider = csqaq.New(acc.Cookie, s.log) // cookie field stores the API token
 	s.log.Info("market: csqaq provider ready", "account", acc.Name)
 }
 
@@ -121,16 +127,19 @@ func (s *MarketService) GetAllPrices() ([]platform.PriceInfo, error) {
 }
 
 // StartAutoRefresh begins periodic full refresh of all market prices.
-// Safe to call multiple times — stops previous loop before starting a new one.
+// Safe to call multiple times — waits for previous loop to finish before starting a new one.
 func (s *MarketService) StartAutoRefresh(_ context.Context) {
 	if s.stopRefresh != nil {
 		close(s.stopRefresh)
+		s.refreshWg.Wait()
 	}
+	s.refreshWg.Add(1)
 	s.stopRefresh = make(chan struct{})
 	go s.refreshLoop(s.stopRefresh)
 }
 
 func (s *MarketService) refreshLoop(stop chan struct{}) {
+	defer s.refreshWg.Done()
 	s.log.Info("market: auto-refresh started", "intervalMin", s.ttlMin)
 	s.refreshAll(context.Background())
 
@@ -160,8 +169,12 @@ func (s *MarketService) refreshAll(ctx context.Context) {
 		return
 	}
 
-	s.resolveMissingGoods(ctx)
+	s.fetchPrices(ctx)         // fast: price already-known items
+	s.resolveMissingGoods(ctx) // slow: resolve missing market_hash_names
+	s.fetchPrices(ctx)         // price newly-resolved items
+}
 
+func (s *MarketService) fetchPrices(ctx context.Context) {
 	rows, err := s.db.Table("inventory").
 		Select("DISTINCT market_hash_name").
 		Where("market_hash_name != ''").
