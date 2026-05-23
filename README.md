@@ -76,7 +76,7 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
 
 ## Examples
 
-见 [examples/](examples/) 目录。
+见 [examples/examples.md](examples/examples.md)。
 
 ## 技术栈
 
@@ -170,5 +170,5 @@ make db-new NAME=add_xxx_table   # 创建新迁移文件
 
 ## 参考
 
-- [CSQAQ](https://docs.csqaq.com/) — 行情数据
-- [SteamAuto](https://github.com/jiajiaxd/SteamAuto) — BUFF/悠悠有品 API 交互逻辑参考
+- [CSQAQ](https://csqaq.com/) — 行情数据
+- [SteamAuto](https://github.com/SteamAuto/SteamAuto) — BUFF/悠悠有品 API 交互逻辑参考
