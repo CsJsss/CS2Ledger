@@ -1,12 +1,12 @@
-import { Routes, Route, Navigate } from "react-router";
-import AppLayout from "./components/AppLayout";
-import DashboardPage from "./pages/DashboardPage";
-import InventoryPage from "./pages/InventoryPage";
-import InventoryDetailPage from "./pages/InventoryDetailPage";
-import CompletedTradesPage from "./pages/CompletedTradesPage";
-import PnLPage from "./pages/PnLPage";
-import AccountsPage from "./pages/AccountsPage";
-import SettingsPage from "./pages/SettingsPage";
+import { Routes, Route, Navigate } from 'react-router';
+import AppLayout from './components/AppLayout';
+import DashboardPage from './pages/DashboardPage';
+import InventoryPage from './pages/InventoryPage';
+import InventoryDetailPage from './pages/InventoryDetailPage';
+import CompletedTradesPage from './pages/CompletedTradesPage';
+import PnLPage from './pages/PnLPage';
+import AccountsPage from './pages/AccountsPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   return (

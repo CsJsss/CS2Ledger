@@ -12,6 +12,7 @@ const (
 	PlatformC5     = "c5"
 	PlatformIGXE   = "igxe"
 	PlatformECO    = "eco"
+	PlatformCsqaq  = "csqaq"
 )
 
 // TradeState controls whether history queries filter by order completion status.

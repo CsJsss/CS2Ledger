@@ -3,18 +3,19 @@ package youpin
 import "encoding/json"
 
 type youpinBuyProduct struct {
-	AssertID        int64       `json:"assertId"`
-	CommodityID     int64       `json:"commodityId"`
-	CommodityName   string      `json:"commodityName"`
-	Price           json.Number `json:"price"`           // 元, e.g. 1610.00
-	CommodityAmount json.Number `json:"commodityAmount"` // 该商品总价 (元)
-	CommodityAbrade string      `json:"commodityAbrade"` // 磨损度
-	ExteriorName    string      `json:"exteriorName"`    // 磨损范围 (e.g., 久经沙场)
-	RarityName      string      `json:"rarityName"`      // 稀有度
-	ItemSetName     string      `json:"itemSetName"`     // 套装
-	TypeName        string      `json:"typeName"`        // 武器类型
-	PaintIndex      int         `json:"paintIndex"`
-	PaintSeed       int         `json:"paintSeed"`
+	AssertID          int64       `json:"assertId"`
+	CommodityID       int64       `json:"commodityId"`
+	CommodityName     string      `json:"commodityName"`
+	CommodityHashName string      `json:"commodityHashName"` // market hash name, e.g. "M4A4 | Asiimov (Field-Tested)"
+	Price             json.Number `json:"price"`             // 元, e.g. 1610.00
+	CommodityAmount   json.Number `json:"commodityAmount"`   // 该商品总价 (元)
+	CommodityAbrade   string      `json:"commodityAbrade"`   // 磨损度
+	ExteriorName      string      `json:"exteriorName"`      // 磨损范围 (e.g., 久经沙场)
+	RarityName        string      `json:"rarityName"`        // 稀有度
+	ItemSetName       string      `json:"itemSetName"`       // 套装
+	TypeName          string      `json:"typeName"`          // 武器类型
+	PaintIndex        int         `json:"paintIndex"`
+	PaintSeed         int         `json:"paintSeed"`
 }
 
 type youpinBuyOrder struct {
@@ -46,18 +47,19 @@ type youpinSellOrder struct {
 	CommodityNum    int         `json:"commodityNum"`
 	OrderStatusName string      `json:"orderStatusName"`
 	ProductDetail   struct {
-		AssertID        int64       `json:"assertId"`
-		CommodityID     int64       `json:"commodityId"`
-		CommodityName   string      `json:"commodityName"`
-		Price           json.Number `json:"price"`           // 单价 (元)
-		CommodityAmount json.Number `json:"commodityAmount"` // 单品总价 (元)
-		CommodityAbrade string      `json:"commodityAbrade"` // 磨损度
-		ExteriorName    string      `json:"exteriorName"`    // 磨损范围
-		RarityName      string      `json:"rarityName"`      // 稀有度
-		ItemSetName     string      `json:"itemSetName"`     // 套装
-		TypeName        string      `json:"typeName"`        // 武器类型
-		PaintIndex      int         `json:"paintIndex"`
-		PaintSeed       int         `json:"paintSeed"`
+		AssertID          int64       `json:"assertId"`
+		CommodityID       int64       `json:"commodityId"`
+		CommodityName     string      `json:"commodityName"`
+		CommodityHashName string      `json:"commodityHashName"` // market hash name
+		Price             json.Number `json:"price"`             // 单价 (元)
+		CommodityAmount   json.Number `json:"commodityAmount"`   // 单品总价 (元)
+		CommodityAbrade   string      `json:"commodityAbrade"`   // 磨损度
+		ExteriorName      string      `json:"exteriorName"`      // 磨损范围
+		RarityName        string      `json:"rarityName"`        // 稀有度
+		ItemSetName       string      `json:"itemSetName"`       // 套装
+		TypeName          string      `json:"typeName"`          // 武器类型
+		PaintIndex        int         `json:"paintIndex"`
+		PaintSeed         int         `json:"paintSeed"`
 	} `json:"productDetail"`
 }
 

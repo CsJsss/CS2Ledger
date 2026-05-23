@@ -2,6 +2,7 @@ package orm
 
 import (
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -38,4 +39,68 @@ func (o *ormImpl) FindInventoryByAssetID(accountID uint, assetID string) (*model
 		return nil, nil
 	}
 	return &item, err
+}
+
+// FindInventoryGroupKeys returns paginated distinct (item_name, exterior) pairs for an account.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindInventoryGroupKeys(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error) {
+	var total int64
+	q := o.db.Model(&model.InventoryItem{})
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if weaponType != "" {
+		q = q.Where("weapon_type = ?", weaponType)
+	}
+	if err := q.Select("COUNT(DISTINCT item_name || '|' || COALESCE(exterior, ''))").Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var keys []InventoryGroupKey
+	q2 := o.db.Model(&model.InventoryItem{}).Select("item_name, COALESCE(exterior, '') AS exterior")
+	if accountID != 0 {
+		q2 = q2.Where("account_id = ?", accountID)
+	} else {
+		q2 = q2.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	if status != "" {
+		q2 = q2.Where("status = ?", status)
+	}
+	if weaponType != "" {
+		q2 = q2.Where("weapon_type = ?", weaponType)
+	}
+	err := q2.Group("item_name, exterior").Order(sortBy + " " + sortDir).
+		Offset(offset).Limit(limit).
+		Find(&keys).Error
+	return keys, total, err
+}
+
+// FindInventoryByGroupKeys returns inventory items matching the given (item_name, exterior) pairs.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	var conditions []string
+	var args []any
+	for _, k := range keys {
+		conditions = append(conditions, "(item_name = ? AND COALESCE(exterior, '') = ?)")
+		args = append(args, k.ItemName, k.Exterior)
+	}
+
+	var items []model.InventoryItem
+	q := o.db.Where("("+strings.Join(conditions, " OR ")+")", args...)
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	err := q.Preload("BuyTrade").Order("updated_at DESC").Find(&items).Error
+	return items, err
 }

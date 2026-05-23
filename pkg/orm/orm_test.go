@@ -9,7 +9,7 @@ import (
 func setupTestDB(t *testing.T) (ORMInterface, func()) {
 	t.Helper()
 
-	orm, err := NewTestORM()
+	orm, _, err := NewTestORM()
 	if err != nil {
 		t.Fatalf("failed to open test db: %v", err)
 	}

@@ -1,11 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { GetMonthlyBreakdown } from "../lib/wails";
-import { useAccounts } from "./useAccounts";
+import { useQuery } from '@tanstack/react-query';
+import { GetMonthlyBreakdown } from '../lib/wails';
+import { useAccounts } from './useAccounts';
 
 export function useMonthlyBreakdown(selectedAccountId: number | null, year: number) {
   const { data: accounts = [] } = useAccounts();
   return useQuery({
-    queryKey: ["monthlyBreakdown", selectedAccountId ?? "all", year],
+    queryKey: ['monthlyBreakdown', selectedAccountId ?? 'all', year],
     queryFn: async () => {
       if (selectedAccountId != null) {
         return GetMonthlyBreakdown(selectedAccountId, year);

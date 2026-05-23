@@ -21,6 +21,7 @@ type CS2Item struct {
 	ClassID        string `json:"classId,omitempty"`
 	InstanceID     string `json:"instanceId,omitempty"`
 	GoodsID        int    `json:"goodsId,omitempty"`
+	CsqaqGoodsID   int    `json:"csqaqGoodsId,omitempty"`
 	MarketHashName string `json:"marketHashName,omitempty"`
 	ItemName       string `json:"itemName,omitempty"`
 	IconURL        string `json:"iconUrl,omitempty"`

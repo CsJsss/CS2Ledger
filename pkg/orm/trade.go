@@ -144,3 +144,62 @@ func (o *ormImpl) RebuildInventory() error {
 		`).Error
 	})
 }
+
+// FindCompletedTradeGroupNames returns paginated distinct item names for completed trades.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindCompletedTradeGroupNames(accountID uint, offset, limit int, sortBy, sortDir string) ([]string, int64, error) {
+	var total int64
+	q := o.db.Model(&model.TradeRecord{}).
+		Where("trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL")
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	if err := q.Select("COUNT(DISTINCT item_name)").Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var names []string
+	q2 := o.db.Model(&model.TradeRecord{}).
+		Select("item_name").
+		Where("trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL")
+	if accountID != 0 {
+		q2 = q2.Where("account_id = ?", accountID)
+	} else {
+		q2 = q2.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	err := q2.Group("item_name").Order(sortBy+" "+sortDir).
+		Offset(offset).Limit(limit).
+		Pluck("item_name", &names).Error
+	return names, total, err
+}
+
+// FindSellsByItemNames returns matched sells for the given item names.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindSellsByItemNames(accountID uint, itemNames []string) ([]model.TradeRecord, error) {
+	if len(itemNames) == 0 {
+		return nil, nil
+	}
+	var sells []model.TradeRecord
+	q := o.db.Where(
+		"item_name IN ? AND trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL",
+		itemNames,
+	)
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	err := q.Order("trade_at DESC").Find(&sells).Error
+	return sells, err
+}
+
+func (o *ormImpl) FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var records []model.TradeRecord
+	err := o.db.Where("id IN ?", ids).Find(&records).Error
+	return records, err
+}

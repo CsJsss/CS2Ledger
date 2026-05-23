@@ -25,8 +25,11 @@ lint: ## Run ESLint on all source files.
 	npm run lint
 
 .PHONY: fmt
-format: ## Format source files with Prettier.
+fmt: ## Format source files with Prettier.
 	npm run format
+
+.PHONY: format
+format: fmt ## Alias for fmt.
 
 .PHONY: typecheck
 typecheck: ## Run TypeScript type checking.

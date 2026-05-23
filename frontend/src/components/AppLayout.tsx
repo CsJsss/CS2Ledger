@@ -1,34 +1,34 @@
-import { useState } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router";
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Typography from "@mui/material/Typography";
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import Chip from "@mui/material/Chip";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Tooltip from "@mui/material/Tooltip";
-import SearchIcon from "@mui/icons-material/Search";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useAccounts } from "../hooks/useAccounts";
-import { useUIStore } from "../store/uiStore";
+import { useState } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router';
+import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemText from '@mui/material/ListItemText';
+import Typography from '@mui/material/Typography';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import Chip from '@mui/material/Chip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Tooltip from '@mui/material/Tooltip';
+import SearchIcon from '@mui/icons-material/Search';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useAccounts } from '../hooks/useAccounts';
+import { useUIStore } from '../store/uiStore';
 
 const DRAWER_WIDTH = 224;
 const APPBAR_HEIGHT = 56;
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/inventory", label: "Inventory" },
-  { to: "/trades/completed", label: "Trades" },
-  { to: "/pnl", label: "P&L" },
-  { to: "/accounts", label: "Accounts" },
-  { to: "/settings", label: "Settings" },
+  { to: '/dashboard', label: '仪表盘' },
+  { to: '/inventory', label: '持仓' },
+  { to: '/trades/completed', label: '交易记录' },
+  { to: '/pnl', label: '盈亏' },
+  { to: '/accounts', label: '账户管理' },
+  { to: '/settings', label: '设置' },
 ];
 
 export default function AppLayout() {
@@ -38,20 +38,20 @@ export default function AppLayout() {
   const navigate = useNavigate();
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState('');
 
   const selectedAccount = accounts.find((a) => a.ID === selectedAccountId) ?? null;
   const platformLabel = (p: string) =>
-    ({ buff: "BUFF", youpin: "悠悠", c5: "C5", igxe: "IGXE", eco: "ECO" }[p] ?? p);
+    ({ buff: 'BUFF', youpin: '悠悠', c5: 'C5', igxe: 'IGXE', eco: 'ECO' })[p] ?? p;
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && searchText.trim()) {
+    if (e.key === 'Enter' && searchText.trim()) {
       void navigate(`/inventory?search=${encodeURIComponent(searchText.trim())}`);
     }
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <AppBar
         position="fixed"
         color="default"
@@ -59,7 +59,7 @@ export default function AppLayout() {
         sx={{ zIndex: (t) => t.zIndex.drawer + 1, height: APPBAR_HEIGHT }}
       >
         <Toolbar sx={{ height: APPBAR_HEIGHT, minHeight: `${APPBAR_HEIGHT}px !important`, gap: 2 }}>
-          <Typography variant="h6" fontWeight="bold" sx={{ whiteSpace: "nowrap" }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>
             CS2 Ledger
           </Typography>
 
@@ -79,26 +79,32 @@ export default function AppLayout() {
             sx={{
               maxWidth: 360,
               flex: 1,
-              "& .MuiOutlinedInput-root": { bgcolor: "grey.100" },
+              '& .MuiOutlinedInput-root': { bgcolor: 'grey.100' },
             }}
           />
 
           <Box sx={{ flex: 1 }} />
 
-          <Tooltip title={selectedAccount ? `${selectedAccount.name} (${platformLabel(selectedAccount.platform)})` : "所有账号"}>
+          <Tooltip
+            title={
+              selectedAccount
+                ? `${selectedAccount.name} (${platformLabel(selectedAccount.platform)})`
+                : '所有账号'
+            }
+          >
             <Chip
               label={
                 selectedAccount
                   ? `${selectedAccount.name} · ${platformLabel(selectedAccount.platform)}`
-                  : "所有账号"
+                  : '所有账号'
               }
-              color={selectedAccount ? "primary" : "default"}
-              variant={selectedAccount ? "filled" : "outlined"}
+              color={selectedAccount ? 'primary' : 'default'}
+              variant={selectedAccount ? 'filled' : 'outlined'}
               size="small"
               deleteIcon={<ExpandMoreIcon />}
               onDelete={() => {}}
               onClick={(e) => setAnchorEl(e.currentTarget)}
-              sx={{ cursor: "pointer", maxWidth: 220 }}
+              sx={{ cursor: 'pointer', maxWidth: 220 }}
             />
           </Tooltip>
 
@@ -106,8 +112,8 @@ export default function AppLayout() {
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={() => setAnchorEl(null)}
-            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
             <MenuItem
               selected={selectedAccountId === null}
@@ -134,15 +140,15 @@ export default function AppLayout() {
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ display: "flex", flex: 1, mt: `${APPBAR_HEIGHT}px` }}>
+      <Box sx={{ display: 'flex', flex: 1, mt: `${APPBAR_HEIGHT}px` }}>
         <Drawer
           variant="permanent"
           sx={{
             width: DRAWER_WIDTH,
             flexShrink: 0,
-            "& .MuiDrawer-paper": {
+            '& .MuiDrawer-paper': {
               width: DRAWER_WIDTH,
-              boxSizing: "border-box",
+              boxSizing: 'border-box',
               mt: `${APPBAR_HEIGHT}px`,
             },
           }}
@@ -156,17 +162,20 @@ export default function AppLayout() {
                 sx={{
                   borderRadius: 1,
                   mb: 0.5,
-                  "&.active": { bgcolor: "primary.main", color: "white" },
-                  "&.active:hover": { bgcolor: "primary.dark" },
+                  '&.active': { bgcolor: 'primary.main', color: 'white' },
+                  '&.active:hover': { bgcolor: 'primary.dark' },
                 }}
               >
-                <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }} />
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{ fontSize: 14, fontWeight: 500 }}
+                />
               </ListItemButton>
             ))}
           </List>
         </Drawer>
 
-        <Box component="main" sx={{ flex: 1, overflow: "auto", p: 3 }}>
+        <Box component="main" sx={{ flex: 1, overflow: 'auto', p: 3 }}>
           <Outlet />
         </Box>
       </Box>

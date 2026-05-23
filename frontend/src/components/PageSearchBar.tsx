@@ -1,6 +1,6 @@
-import TextField from "@mui/material/TextField";
-import InputAdornment from "@mui/material/InputAdornment";
-import SearchIcon from "@mui/icons-material/Search";
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
 
 interface PageSearchBarProps {
   value: string;
@@ -8,7 +8,11 @@ interface PageSearchBarProps {
   placeholder?: string;
 }
 
-export default function PageSearchBar({ value, onChange, placeholder = "Search..." }: PageSearchBarProps) {
+export default function PageSearchBar({
+  value,
+  onChange,
+  placeholder = 'Search...',
+}: PageSearchBarProps) {
   return (
     <TextField
       size="small"
@@ -24,7 +28,7 @@ export default function PageSearchBar({ value, onChange, placeholder = "Search..
       }}
       sx={{
         width: 260,
-        "& .MuiOutlinedInput-root": { bgcolor: "grey.100" },
+        '& .MuiOutlinedInput-root': { bgcolor: 'grey.100' },
       }}
     />
   );

@@ -1,21 +1,21 @@
-import { useState, useEffect } from "react";
-import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Box from "@mui/material/Box";
-import Dialog from "./Dialog";
-import { PLATFORM_OPTIONS } from "../lib/constants";
+import { useState, useEffect } from 'react';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Box from '@mui/material/Box';
+import Dialog from './Dialog';
+import { PLATFORM_OPTIONS, PLATFORM_CSQAQ } from '../lib/constants';
 
-const RSA_PLATFORMS = new Set(["eco", "igxe"]);
+const RSA_PLATFORMS = new Set(['eco', 'igxe']);
 
 function useResettableState(open: boolean, editMode: boolean, initial: string) {
   const [value, setValue] = useState(initial);
   useEffect(() => {
-    setValue(editMode ? "" : initial);
+    setValue(editMode ? '' : initial);
   }, [open, editMode, initial]);
   return [value, setValue] as const;
 }
@@ -39,11 +39,11 @@ export default function AddAccountDialog({
   editMode = false,
   initialValues,
 }: AddAccountDialogProps) {
-  const [name, setName] = useResettableState(open, editMode, "");
+  const [name, setName] = useResettableState(open, editMode, '');
   const [platform, setPlatform] = useState<string>(PLATFORM_OPTIONS[0].value);
-  const [cookie, setCookie] = useResettableState(open, editMode, "");
-  const [identityId, setIdentityId] = useResettableState(open, editMode, "");
-  const [rsaKey, setRsaKey] = useResettableState(open, editMode, "");
+  const [cookie, setCookie] = useResettableState(open, editMode, '');
+  const [identityId, setIdentityId] = useResettableState(open, editMode, '');
+  const [rsaKey, setRsaKey] = useResettableState(open, editMode, '');
 
   useEffect(() => {
     if (editMode && initialValues) {
@@ -57,16 +57,20 @@ export default function AddAccountDialog({
   const isRSA = RSA_PLATFORMS.has(platform);
 
   const buildCredential = (): string => {
+    if (platform === PLATFORM_CSQAQ) return cookie.trim();
     if (isRSA) {
-      if (!identityId.trim() && !rsaKey.trim()) return "";
-      return identityId.trim() + ":" + rsaKey.trim();
+      if (!identityId.trim() && !rsaKey.trim()) return '';
+      return identityId.trim() + ':' + rsaKey.trim();
     }
     return cookie.trim();
   };
 
-  const credentialEmpty = isRSA
-    ? !identityId.trim() || !rsaKey.trim()
-    : !cookie.trim();
+  const credentialEmpty =
+    platform === PLATFORM_CSQAQ
+      ? !cookie.trim()
+      : isRSA
+        ? !identityId.trim() || !rsaKey.trim()
+        : !cookie.trim();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,63 +82,84 @@ export default function AddAccountDialog({
   const handleCancel = () => {
     onClose();
     if (!editMode) {
-      setName("");
-      setCookie("");
-      setIdentityId("");
-      setRsaKey("");
+      setName('');
+      setCookie('');
+      setIdentityId('');
+      setRsaKey('');
     }
   };
 
-  const formId = editMode ? "edit-account-form" : "add-account-form";
+  const formId = editMode ? 'edit-account-form' : 'add-account-form';
 
   return (
     <Dialog
       open={open}
       onClose={handleCancel}
-      title={editMode ? "Edit Account" : "Add Account"}
+      title={editMode ? '编辑账户' : '添加账户'}
       actions={
         <>
-          <Button onClick={handleCancel}>Cancel</Button>
+          <Button onClick={handleCancel}>取消</Button>
           <Button type="submit" variant="contained" disabled={isPending} form={formId}>
-            {isPending ? "Saving..." : editMode ? "Save Changes" : "Add"}
+            {isPending ? '保存中...' : editMode ? '保存更改' : '添加'}
           </Button>
         </>
       }
     >
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      <Box component="form" id={formId} onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+      <Box
+        component="form"
+        id={formId}
+        onSubmit={handleSubmit}
+        sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+      >
         <TextField
-          label="Name"
+          label="名称"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="My BUFF account"
+          placeholder="例如：我的 BUFF 账户"
           required
           size="small"
           fullWidth
         />
 
         <FormControl size="small" fullWidth>
-          <InputLabel>Platform</InputLabel>
+          <InputLabel>平台</InputLabel>
           <Select
             value={platform}
-            label="Platform"
+            label="平台"
             onChange={(e) => setPlatform(e.target.value)}
             disabled={editMode}
           >
             {PLATFORM_OPTIONS.map((p) => (
-              <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>
+              <MenuItem key={p.value} value={p.value}>
+                {p.label}
+              </MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        {isRSA ? (
+        {platform === PLATFORM_CSQAQ ? (
+          <TextField
+            label="API Token"
+            value={cookie}
+            onChange={(e) => setCookie(e.target.value)}
+            placeholder={editMode ? '留空则不更改当前 Token' : '在此粘贴 CSQAQ API Token...'}
+            required={!editMode}
+            size="small"
+            fullWidth
+          />
+        ) : isRSA ? (
           <>
             <TextField
               label="身份ID"
               value={identityId}
               onChange={(e) => setIdentityId(e.target.value)}
-              placeholder="Partner ID"
+              placeholder="合作方 ID"
               required={!editMode}
               size="small"
               fullWidth
@@ -143,7 +168,7 @@ export default function AddAccountDialog({
               label="RSA 私钥"
               value={rsaKey}
               onChange={(e) => setRsaKey(e.target.value)}
-              placeholder={editMode ? "Leave empty to keep current key" : "Paste your RSA private key (PEM)..."}
+              placeholder={editMode ? '留空则不更改当前密钥' : '粘贴 RSA 私钥 (PEM 格式)...'}
               required={!editMode}
               multiline
               rows={4}
@@ -156,7 +181,7 @@ export default function AddAccountDialog({
             label="Cookie"
             value={cookie}
             onChange={(e) => setCookie(e.target.value)}
-            placeholder={editMode ? "Leave empty to keep current cookie" : "Paste your platform cookie here..."}
+            placeholder={editMode ? '留空则不更改当前 Cookie' : '在此粘贴平台 Cookie...'}
             required={!editMode}
             multiline
             rows={4}

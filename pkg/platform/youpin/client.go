@@ -13,6 +13,7 @@ import (
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
+	"github.com/CsJsss/CS2Ledger/pkg/platform/httpclient"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
@@ -26,7 +27,6 @@ type Client struct {
 	deviceToken string
 	deviceID    string
 	userID      int64
-	rateLimiter chan struct{}
 	initOnce    sync.Once
 	uk          string
 	ukTime      time.Time
@@ -35,26 +35,14 @@ type Client struct {
 
 func New(token string, logger *logfx.Logger) *Client {
 	dev := randomString(24)
-	limiter := make(chan struct{}, 3)
-	for i := 0; i < 3; i++ {
-		limiter <- struct{}{}
-	}
-	go func() {
-		ticker := time.NewTicker(500 * time.Millisecond)
-		defer ticker.Stop()
-		for range ticker.C {
-			select {
-			case limiter <- struct{}{}:
-			default:
-			}
-		}
-	}()
 	return &Client{
-		BaseClient:  platform.NewBaseClient(platform.PlatformYoupin, "https://api.youpin898.com", logger),
+		BaseClient: platform.NewBaseClient(
+			platform.PlatformYoupin, "https://api.youpin898.com", logger,
+			httpclient.WithRateLimit(3, 2),
+		),
 		token:       token,
 		deviceToken: dev,
 		deviceID:    dev,
-		rateLimiter: limiter,
 	}
 }
 
@@ -257,18 +245,19 @@ func (c *Client) fetchBuyBatch(ctx context.Context, orderNo string, buyerUserID 
 	}
 
 	type commodityVO struct {
-		ID              int64       `json:"id"`
-		Name            string      `json:"name"`
-		Price           json.Number `json:"price"`
-		CommodityAmount json.Number `json:"commodityAmount"`
-		Abrade          string      `json:"abrade"`
-		CommodityAbrade string      `json:"commodityAbrade"`
-		ExteriorName    string      `json:"exteriorName"`
-		RarityName      string      `json:"rarityName"`
-		ItemSetName     string      `json:"itemSetName"`
-		TypeName        string      `json:"typeName"`
-		PaintIndex      int         `json:"paintIndex"`
-		PaintSeed       int         `json:"paintSeed"`
+		ID                int64       `json:"id"`
+		Name              string      `json:"name"`
+		CommodityHashName string      `json:"commodityHashName"` // market hash name
+		Price             json.Number `json:"price"`
+		CommodityAmount   json.Number `json:"commodityAmount"`
+		Abrade            string      `json:"abrade"`
+		CommodityAbrade   string      `json:"commodityAbrade"`
+		ExteriorName      string      `json:"exteriorName"`
+		RarityName        string      `json:"rarityName"`
+		ItemSetName       string      `json:"itemSetName"`
+		TypeName          string      `json:"typeName"`
+		PaintIndex        int         `json:"paintIndex"`
+		PaintSeed         int         `json:"paintSeed"`
 	}
 
 	var result struct {
@@ -308,7 +297,7 @@ func (c *Client) fetchBuyBatch(ctx context.Context, orderNo string, buyerUserID 
 			trades = append(trades, platform.TradeRecord{
 				ExternalID: fmt.Sprintf("youpin-buy-%s-%d", orderNo, commodity.ID),
 				CS2Item: model.CS2Item{
-					AssetID: fmt.Sprintf("%d", commodity.ID), ItemName: name,
+					AssetID: fmt.Sprintf("%d", commodity.ID), ItemName: name, MarketHashName: commodity.CommodityHashName,
 					Exterior: exterior, PaintWear: parseWear(wear),
 					Rarity: commodity.RarityName, WeaponType: commodity.TypeName, Itemset: commodity.ItemSetName,
 					PaintSeed: commodity.PaintSeed, PaintIndex: commodity.PaintIndex,
@@ -435,14 +424,8 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
-// doRequest enforces rate limiting then delegates to BaseClient.DoRequest.
+// doRequest serializes the body and delegates to BaseClient (rate limiting is handled by httpclient).
 func (c *Client) doRequest(ctx context.Context, method, path string, query map[string]string, reqBody map[string]any) (int, []byte, error) {
-	select {
-	case <-c.rateLimiter:
-	case <-ctx.Done():
-		return 0, nil, ctx.Err()
-	}
-
 	var bodyBytes []byte
 	if reqBody != nil {
 		bodyBytes, _ = json.Marshal(reqBody)

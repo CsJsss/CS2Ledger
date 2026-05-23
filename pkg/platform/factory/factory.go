@@ -12,6 +12,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/buff"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/c5"
+	"github.com/CsJsss/CS2Ledger/pkg/platform/csqaq"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/eco"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/igxe"
 	"github.com/CsJsss/CS2Ledger/pkg/platform/youpin"
@@ -53,5 +54,15 @@ func (f *PlatformFactory) New(platformName, credential string, logger *logfx.Log
 		return c, nil
 	default:
 		return nil, fmt.Errorf("unknown platform: %s", platformName)
+	}
+}
+
+// NewPriceProvider creates a price provider for the given platform name and credential.
+func (f *PlatformFactory) NewPriceProvider(platformName, credential string) (platform.PriceProvider, error) {
+	switch strings.ToLower(platformName) {
+	case platform.PlatformCsqaq:
+		return csqaq.New(credential, nil), nil
+	default:
+		return nil, fmt.Errorf("unknown price provider: %s", platformName)
 	}
 }

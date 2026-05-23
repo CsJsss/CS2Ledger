@@ -16,6 +16,7 @@
 | 悠悠有品 | `youpin` | Token | 网页版登录后的 Authorization Bearer Token |
 | C5 | `c5` | API Key | 商户后台 Open API 的 app-key |
 | ECO | `eco` | Partner ID + RSA私钥 |  |
+| CSQAQ | `csqaq` | API Token | 行情数据源，用于获取市场价（[csqaq.com](https://www.csqaq.com)） |
 
 ## 各平台凭据获取方法
 
@@ -56,49 +57,26 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
 
 > 私钥中的换行可以用 `\n` 表示，直接写在一行或多行粘贴均可。
 
+### CSQAQ — API Token
+
+1. 前往 [csqaq.com](https://www.csqaq.com) 注册账号
+2. 在个人中心获取 API Token
+3. 在 CS2Ledger 中添加 csqaq 账户，输入 Token 即可
+
 ## 功能概览
 
 - **账户管理：** 连接多平台、多账号，统一管理
-- **库存管理：** 库存快照、对比、详情查看、导出
-- **交易记录：** 买入/卖出历史自动拉取
-- **盈亏计算：** 已实现盈亏、浮动盈亏、综合 P&L
-- **仪表盘：** 资产净值、分布图、趋势图
+- **库存管理：** 库存快照、对比、详情查看、导出（按物品名称 + 磨损程度分组，点击物品名称上的 CSQAQ 图标可在浏览器中快速跳转查看饰品详情）
+- **交易记录：** 买入/卖出历史自动拉取，成本基准追踪
+- **行情接入：** 接入 [CSQAQ](https://www.csqaq.com) 行情，BUFF/悠悠有品/Steam 售价与成交量
+- **盈亏计算：** 已实现盈亏、浮动盈亏（持仓成本 vs 市场价）、综合 P&L
+- **仪表盘：** 钱包余额、已实现盈亏、持仓市值、未实现盈亏
+
+更多详情见 [ROADMAP.md](ROADMAP.md)。
 
 ## Examples
 
-### 库存管理
-
-![Inventory](img/inventory.png)
-
-### 交易记录
-
-![Trades](img/trades.png)
-
-### 盈亏分析
-
-![P&L](img/pnl.png)
-
-## 版本路线
-
-### v0.1（当前）
-
-- 账户与平台连接（BUFF / 悠悠有品 / C5 / ECO / IGXE）
-- 库存管理（快照、对比、详情、导出）
-- 交易记录（自动拉取）
-- 已实现盈亏 & 综合 P&L
-- 仪表盘（净值、分布图、趋势图）
-
-### TODO
-
-#### v0.2
-
-- 出租记录分析（租金收入、出租率、租期分布）
-- 账单流水分析（平台余额变动追溯、充值/提现/消费分类）
-
-#### v0.3（规划中）
-
-- 持仓盈亏分析（浮动盈亏、持仓成本 vs 市场价）
-- 第三方行情接入（如 [csqaq.com](https://www.csqaq.com)）
+见 [examples/](examples/) 目录。
 
 ## 技术栈
 
@@ -148,7 +126,7 @@ cs2-ledger/
 ├── pkg/
 │   ├── model/           # 数据模型
 │   ├── orm/             # 数据访问层 (GORM)
-│   ├── platform/        # 外部平台客户端 (BUFF/悠悠/C5/IGXE/ECO)
+│   ├── platform/        # 外部平台客户端 (BUFF/悠悠/C5/IGXE/ECO/csqaq)
 │   ├── service/         # 业务逻辑层
 │   └── utils/           # 基础设施 (数据库、日志)
 ├── frontend/            # React 前端
@@ -192,4 +170,5 @@ make db-new NAME=add_xxx_table   # 创建新迁移文件
 
 ## 参考
 
-BUFF/悠悠有品的 API 交互逻辑参考了 [SteamAuto](https://github.com/jiajiaxd/SteamAuto) 项目的实现。
+- [CSQAQ](https://docs.csqaq.com/) — 行情数据
+- [SteamAuto](https://github.com/jiajiaxd/SteamAuto) — BUFF/悠悠有品 API 交互逻辑参考

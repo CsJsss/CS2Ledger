@@ -39,9 +39,10 @@ func toBuyerTradeEnriched(item c5BuyerOrder, detail c5BuyerOrderDetail) platform
 	if detail.OpenItemInfo != nil {
 		name, exterior := platform.NormalizeItemName(detail.OpenItemInfo.Name)
 		trade.CS2Item = model.CS2Item{
-			AssetID:  detail.OpenItemInfo.ItemID,
-			ItemName: name,
-			Exterior: exterior,
+			AssetID:        detail.OpenItemInfo.ItemID,
+			ItemName:       name,
+			MarketHashName: detail.OpenItemInfo.MarketHashName,
+			Exterior:       exterior,
 		}
 	} else {
 		trade.CS2Item = model.CS2Item{
@@ -76,7 +77,7 @@ func toSellerTrade(item c5SellerOrder) platform.TradeRecord {
 	name, exterior := platform.NormalizeItemName(item.Name)
 	return platform.TradeRecord{
 		ExternalID: fmt.Sprintf("c5-sell-%s", item.OrderID),
-		CS2Item:    model.CS2Item{AssetID: item.ProductID, ItemName: name, Exterior: exterior},
+		CS2Item:    model.CS2Item{AssetID: item.ProductID, ItemName: name, MarketHashName: item.MarketHashName, Exterior: exterior},
 		TradeType:  "sell",
 		Quantity:   1,
 		UnitPrice:  price,

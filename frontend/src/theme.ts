@@ -1,9 +1,9 @@
-import { createTheme } from "@mui/material/styles";
+import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#2563eb" },
-    error: { main: "#dc2626" },
+    primary: { main: '#2563eb' },
+    error: { main: '#dc2626' },
   },
   typography: {
     fontFamily: '"Geist Variable", sans-serif',
@@ -11,7 +11,7 @@ const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { textTransform: "none" },
+        root: { textTransform: 'none' },
       },
     },
   },

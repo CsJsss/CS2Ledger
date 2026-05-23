@@ -40,7 +40,7 @@ func (c *Client) primeSession() {
 		req, _ := http.NewRequest("GET", c.BaseURL+"/api/message/notification", nil)
 		req.Header.Set("User-Agent", platform.RandomUA())
 		req.Header.Set("Cookie", c.cookie)
-		resp, err := c.HTTP.Do(req)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			c.Log.Warn("buff: init notification call failed", "err", err)
 			return

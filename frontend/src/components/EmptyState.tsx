@@ -1,6 +1,6 @@
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 
 interface EmptyStateProps {
   icon?: string;
@@ -19,7 +19,11 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
       py={8}
       textAlign="center"
     >
-      {icon && <Box fontSize={48} mb={2}>{icon}</Box>}
+      {icon && (
+        <Box fontSize={48} mb={2}>
+          {icon}
+        </Box>
+      )}
       <Typography variant="h6" color="text.primary">
         {title}
       </Typography>

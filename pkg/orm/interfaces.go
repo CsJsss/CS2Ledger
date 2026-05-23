@@ -27,6 +27,14 @@ type TradeInterface interface {
 	FindEarliestUnmatchedBuy(itemName, exterior string, paintSeed, paintIndex int, paintWear float64, beforeTime int64) (*model.TradeRecord, error)
 	ClearAllMatches() error
 	RebuildInventory() error
+	FindCompletedTradeGroupNames(accountID uint, offset, limit int, sortBy, sortDir string) ([]string, int64, error)
+	FindSellsByItemNames(accountID uint, itemNames []string) ([]model.TradeRecord, error)
+	FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
+}
+
+type InventoryGroupKey struct {
+	ItemName string
+	Exterior string
 }
 
 type InventoryInterface interface {
@@ -34,6 +42,8 @@ type InventoryInterface interface {
 	RemoveInventoryByAssetID(accountID uint, assetID string) error
 	FindInventoryByAccount(accountID uint, status string) ([]model.InventoryItem, error)
 	FindInventoryByAssetID(accountID uint, assetID string) (*model.InventoryItem, error)
+	FindInventoryGroupKeys(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
+	FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error)
 }
 
 type PnlInterface interface {

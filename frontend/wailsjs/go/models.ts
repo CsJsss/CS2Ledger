@@ -1,5 +1,57 @@
 export namespace inventory {
 	
+	export class InventoryGroup {
+	    itemName: string;
+	    exterior: string;
+	    csqaqGoodsId?: number;
+	    marketHashName: string;
+	    weaponType: string;
+	    count: number;
+	    totalQuantity: number;
+	    totalBuyPrice: number;
+	    avgBuyPrice: number;
+	    marketPrice?: number;
+	    unrealizedPl?: number;
+	    instances: model.InventoryItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InventoryGroup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.itemName = source["itemName"];
+	        this.exterior = source["exterior"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
+	        this.marketHashName = source["marketHashName"];
+	        this.weaponType = source["weaponType"];
+	        this.count = source["count"];
+	        this.totalQuantity = source["totalQuantity"];
+	        this.totalBuyPrice = source["totalBuyPrice"];
+	        this.avgBuyPrice = source["avgBuyPrice"];
+	        this.marketPrice = source["marketPrice"];
+	        this.unrealizedPl = source["unrealizedPl"];
+	        this.instances = this.convertValues(source["instances"], model.InventoryItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class RentalSummary {
 	    totalDays: number;
 	    totalIncome: number;
@@ -50,14 +102,53 @@ export namespace inventory {
 		    return a;
 		}
 	}
+	export class PaginatedGroups {
+	    groups: InventoryGroup[];
+	    total: number;
+	    page: number;
+	    pageSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PaginatedGroups(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.groups = this.convertValues(source["groups"], InventoryGroup);
+	        this.total = source["total"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
 export namespace main {
 	
 	export class DashboardSummary {
-	    totalNetWorth: number;
+	    realizedPl: number;
 	    inventoryCount: number;
+	    inventoryCost: number;
+	    inventoryMarketValue: number;
+	    priceSource: string;
 	    completedTrades: number;
 	    totalRentalIncome: number;
 	    totalAvailableBalance: number;
@@ -71,14 +162,31 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.totalNetWorth = source["totalNetWorth"];
+	        this.realizedPl = source["realizedPl"];
 	        this.inventoryCount = source["inventoryCount"];
+	        this.inventoryCost = source["inventoryCost"];
+	        this.inventoryMarketValue = source["inventoryMarketValue"];
+	        this.priceSource = source["priceSource"];
 	        this.completedTrades = source["completedTrades"];
 	        this.totalRentalIncome = source["totalRentalIncome"];
 	        this.totalAvailableBalance = source["totalAvailableBalance"];
 	        this.totalFrozenBalance = source["totalFrozenBalance"];
 	        this.totalInstantBalance = source["totalInstantBalance"];
 	        this.totalPurchaseBalance = source["totalPurchaseBalance"];
+	    }
+	}
+	export class UserSettings {
+	    priceSource: string;
+	    priceCacheTtl: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.priceSource = source["priceSource"];
+	        this.priceCacheTtl = source["priceCacheTtl"];
 	    }
 	}
 
@@ -155,6 +263,7 @@ export namespace model {
 	    classId?: string;
 	    instanceId?: string;
 	    goodsId?: number;
+	    csqaqGoodsId?: number;
 	    marketHashName?: string;
 	    itemName?: string;
 	    iconUrl?: string;
@@ -205,6 +314,7 @@ export namespace model {
 	        this.classId = source["classId"];
 	        this.instanceId = source["instanceId"];
 	        this.goodsId = source["goodsId"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
 	        this.marketHashName = source["marketHashName"];
 	        this.itemName = source["itemName"];
 	        this.iconUrl = source["iconUrl"];
@@ -312,6 +422,7 @@ export namespace model {
 	    classId?: string;
 	    instanceId?: string;
 	    goodsId?: number;
+	    csqaqGoodsId?: number;
 	    marketHashName?: string;
 	    itemName?: string;
 	    iconUrl?: string;
@@ -353,6 +464,7 @@ export namespace model {
 	        this.classId = source["classId"];
 	        this.instanceId = source["instanceId"];
 	        this.goodsId = source["goodsId"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
 	        this.marketHashName = source["marketHashName"];
 	        this.itemName = source["itemName"];
 	        this.iconUrl = source["iconUrl"];
@@ -453,6 +565,35 @@ export namespace model {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace platform {
+	
+	export class PriceInfo {
+	    marketHashName: string;
+	    buffPrice: number;
+	    buffVolume: number;
+	    youpinPrice: number;
+	    youpinVolume: number;
+	    steamPrice: number;
+	    steamVolume: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PriceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.marketHashName = source["marketHashName"];
+	        this.buffPrice = source["buffPrice"];
+	        this.buffVolume = source["buffVolume"];
+	        this.youpinPrice = source["youpinPrice"];
+	        this.youpinVolume = source["youpinVolume"];
+	        this.steamPrice = source["steamPrice"];
+	        this.steamVolume = source["steamVolume"];
+	    }
 	}
 
 }
@@ -580,6 +721,86 @@ export namespace trade {
 	        this.totalFee = source["totalFee"];
 	        this.totalNetPl = source["totalNetPl"];
 	    }
+	}
+	export class TradeGroup {
+	    itemName: string;
+	    count: number;
+	    totalBuyPrice: number;
+	    totalSellPrice: number;
+	    totalGrossPl: number;
+	    totalFee: number;
+	    totalNetPl: number;
+	    trades: CompletedTradeView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TradeGroup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.itemName = source["itemName"];
+	        this.count = source["count"];
+	        this.totalBuyPrice = source["totalBuyPrice"];
+	        this.totalSellPrice = source["totalSellPrice"];
+	        this.totalGrossPl = source["totalGrossPl"];
+	        this.totalFee = source["totalFee"];
+	        this.totalNetPl = source["totalNetPl"];
+	        this.trades = this.convertValues(source["trades"], CompletedTradeView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PaginatedGroups {
+	    groups: TradeGroup[];
+	    total: number;
+	    page: number;
+	    pageSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PaginatedGroups(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.groups = this.convertValues(source["groups"], TradeGroup);
+	        this.total = source["total"];
+	        this.page = source["page"];
+	        this.pageSize = source["pageSize"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

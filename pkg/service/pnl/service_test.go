@@ -10,7 +10,7 @@ import (
 func setupService(t *testing.T) (PnlInterface, orm.ORMInterface, func()) {
 	t.Helper()
 
-	ormInst, err := orm.NewTestORM()
+	ormInst, _, err := orm.NewTestORM()
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
