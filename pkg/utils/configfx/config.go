@@ -8,8 +8,10 @@ import (
 )
 
 type Config struct {
-	Log LogConfig `yaml:"log"`
-	DB  DBConfig  `yaml:"db"`
+	Log           LogConfig `yaml:"log"`
+	DB            DBConfig  `yaml:"db"`
+	PriceSource   string    `yaml:"price_source"`
+	PriceCacheTTL int       `yaml:"price_cache_ttl_min"`
 }
 
 type LogConfig struct {
@@ -31,6 +33,8 @@ func DefaultConfig() Config {
 			WALMode:     true,
 			BusyTimeout: 5000,
 		},
+		PriceSource:   "buff",
+		PriceCacheTTL: 30,
 	}
 }
 
@@ -53,6 +57,17 @@ func loadConfig(path string) (Config, error) {
 
 func ProvideConfig() (Config, error) {
 	return loadConfig("config.yaml")
+}
+
+func (c *Config) UpdatePriceSettings(source string, ttl int) error {
+	c.PriceSource = source
+	c.PriceCacheTTL = ttl
+
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile("config.yaml", data, 0644)
 }
 
 var Module = fx.Module("configfx",

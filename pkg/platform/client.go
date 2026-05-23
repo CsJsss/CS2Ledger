@@ -12,6 +12,7 @@ const (
 	PlatformC5     = "c5"
 	PlatformIGXE   = "igxe"
 	PlatformECO    = "eco"
+	PlatformCsqaq  = "csqaq"
 )
 
 // TradeState controls whether history queries filter by order completion status.
@@ -41,9 +42,10 @@ type TradeRecord struct {
 
 // Balance holds account balance in yuan.
 type Balance struct {
-	Available float64
-	Purchase  float64
-	Frozen    float64
+	Available float64 // 钱包余额
+	Purchase  float64 // 求购余额
+	Frozen    float64 // 冻结余额
+	Instant   float64 // 秒到账余额
 }
 
 // QueryConfig holds optional parameters for history queries.

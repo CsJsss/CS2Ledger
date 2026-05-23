@@ -10,7 +10,7 @@ type AccountInterface interface {
 	DeleteAccount(id uint) error
 	UpdateAccountInfo(id uint, name string, cookie string) error
 	UpdateAccountStatus(id uint, status string) error
-	UpdateAccountBalanceAndSyncTime(id uint, available, purchase int64, syncAt int64) error
+	UpdateAccountBalanceAndSyncTime(id uint, available, frozen, instant, purchase int64, syncAt int64) error
 }
 
 type TradeInterface interface {
@@ -27,6 +27,9 @@ type TradeInterface interface {
 	FindEarliestUnmatchedBuy(itemName, exterior string, paintSeed, paintIndex int, paintWear float64, beforeTime int64) (*model.TradeRecord, error)
 	ClearAllMatches() error
 	RebuildInventory() error
+	FindCompletedTradeGroupNames(accountID uint, offset, limit int, sortBy, sortDir string) ([]string, int64, error)
+	FindSellsByItemNames(accountID uint, itemNames []string) ([]model.TradeRecord, error)
+	FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
 }
 
 type InventoryInterface interface {
@@ -34,6 +37,8 @@ type InventoryInterface interface {
 	RemoveInventoryByAssetID(accountID uint, assetID string) error
 	FindInventoryByAccount(accountID uint, status string) ([]model.InventoryItem, error)
 	FindInventoryByAssetID(accountID uint, assetID string) (*model.InventoryItem, error)
+	FindInventoryGroupNames(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]string, int64, error)
+	FindInventoryByItemNames(accountID uint, itemNames []string) ([]model.InventoryItem, error)
 }
 
 type PnlInterface interface {

@@ -1,29 +1,258 @@
 package inventory
 
 import (
+	"errors"
+	"sort"
+
 	"go.uber.org/fx"
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/orm"
+	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
+
+var (
+	ErrInvalidSortBy = errors.New("invalid sortBy")
+)
+
+func ptrValue(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+// sqlSortBy maps frontend sort keys to SQL column names for ORDER BY.
+var sqlSortBy = map[string]string{
+	"itemName":  "item_name",
+	"updatedAt": "updated_at",
+}
+
+// appSortFields are sort keys applied in Go after groups are built.
+var appSortFields = map[string]bool{
+	"count":         true,
+	"totalQuantity": true,
+	"totalBuyPrice": true,
+	"avgBuyPrice":   true,
+	"marketPrice":   true,
+	"unrealizedPl":  true,
+}
+
+// InventoryGroup represents a grouped set of inventory items by item name.
+// MarketPrice and UnrealizedPl are nil until a price source is integrated.
+type InventoryGroup struct {
+	ItemName      string                `json:"itemName"`
+	WeaponType    string                `json:"weaponType"`
+	Count         int                   `json:"count"`
+	TotalQuantity int64                 `json:"totalQuantity"`
+	TotalBuyPrice int64                 `json:"totalBuyPrice"`
+	AvgBuyPrice   int64                 `json:"avgBuyPrice"`
+	MarketPrice   *int64                `json:"marketPrice,omitempty"`
+	UnrealizedPl  *int64                `json:"unrealizedPl,omitempty"`
+	Instances     []model.InventoryItem `json:"instances"`
+}
+
+type PaginatedGroups struct {
+	Groups   []InventoryGroup `json:"groups"`
+	Total    int64            `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+}
 
 type InventoryInterface interface {
 	List(accountID uint, status string) ([]model.InventoryItem, error)
 	GetItemDetail(accountID uint, assetID string) (*ItemDetail, error)
+	ListGroups(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error)
+	SetPriceProvider(p PriceProvider)
+}
+
+// PriceProvider is a subset of market.MarketInterface to avoid import cycles.
+type PriceProvider interface {
+	GetAllPrices() ([]platform.PriceInfo, error)
 }
 
 type service struct {
-	log *logfx.Logger
-	orm orm.ORMInterface
+	log    *logfx.Logger
+	orm    orm.ORMInterface
+	prices PriceProvider
 }
 
 func NewService(log *logfx.Logger, orm orm.ORMInterface) *service {
 	return &service{log: log, orm: orm}
 }
 
+// SetPriceProvider sets the market price source (called after DI wiring).
+func (s *service) SetPriceProvider(p PriceProvider) {
+	s.prices = p
+}
+
 func (s *service) List(accountID uint, status string) ([]model.InventoryItem, error) {
 	return s.orm.FindInventoryByAccount(accountID, status)
+}
+
+func (s *service) ListGroups(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 200 {
+		pageSize = 50
+	}
+	if sortDir != "asc" && sortDir != "desc" {
+		sortDir = "asc"
+	}
+
+	// SQL-level sort: paginate group names via ORM, keep only current page
+	if col, ok := sqlSortBy[sortBy]; ok {
+		offset := (page - 1) * pageSize
+		names, total, err := s.orm.FindInventoryGroupNames(accountID, status, weaponType, offset, pageSize, col, sortDir)
+		if err != nil {
+			return nil, err
+		}
+		groups, err := s.buildGroups(accountID, names)
+		if err != nil {
+			return nil, err
+		}
+		s.enrichWithPrices(groups)
+		return &PaginatedGroups{Groups: groups, Total: total, Page: page, PageSize: pageSize}, nil
+	}
+
+	// App-level sort: fetch all groups, sort in Go, then paginate
+	if appSortFields[sortBy] {
+		names, _, err := s.orm.FindInventoryGroupNames(accountID, status, weaponType, 0, 10000, "item_name", "asc")
+		if err != nil {
+			return nil, err
+		}
+		allGroups, err := s.buildGroups(accountID, names)
+		if err != nil {
+			return nil, err
+		}
+		s.enrichWithPrices(allGroups)
+		s.sortGroups(allGroups, sortBy, sortDir)
+		total := int64(len(allGroups))
+		offset := (page - 1) * pageSize
+		if offset >= len(allGroups) {
+			return &PaginatedGroups{Groups: nil, Total: total, Page: page, PageSize: pageSize}, nil
+		}
+		end := offset + pageSize
+		if end > len(allGroups) {
+			end = len(allGroups)
+		}
+		return &PaginatedGroups{Groups: allGroups[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
+	}
+
+	return nil, ErrInvalidSortBy
+}
+
+func (s *service) enrichWithPrices(groups []InventoryGroup) {
+	if s.prices == nil || len(groups) == 0 {
+		return
+	}
+	priceList, err := s.prices.GetAllPrices()
+	if err != nil || len(priceList) == 0 {
+		return
+	}
+	priceMap := make(map[string]platform.PriceInfo, len(priceList))
+	for _, p := range priceList {
+		priceMap[p.MarketHashName] = p
+	}
+	for i := range groups {
+		g := &groups[i]
+		mhn := ""
+		if len(g.Instances) > 0 {
+			mhn = g.Instances[0].MarketHashName
+		}
+		if mhn == "" || g.AvgBuyPrice == 0 {
+			continue
+		}
+		info, ok := priceMap[mhn]
+		if !ok {
+			continue
+		}
+		mp := int64(info.BuffPrice * 100) // default buff price, 元→分
+		g.MarketPrice = &mp
+		upl := (mp - g.AvgBuyPrice) * g.TotalQuantity
+		g.UnrealizedPl = &upl
+	}
+}
+
+func (s *service) buildGroups(accountID uint, names []string) ([]InventoryGroup, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	instances, err := s.orm.FindInventoryByItemNames(accountID, names)
+	if err != nil {
+		return nil, err
+	}
+
+	byName := make(map[string][]model.InventoryItem)
+	for _, inst := range instances {
+		byName[inst.ItemName] = append(byName[inst.ItemName], inst)
+	}
+
+	groups := make([]InventoryGroup, 0, len(names))
+	for _, name := range names {
+		insts := byName[name]
+		wt := ""
+		var totalQty int64
+		var totalBuyPrice int64
+		for _, inst := range insts {
+			qty := inst.Quantity
+			if qty == 0 {
+				qty = 1
+			}
+			totalQty += qty
+			if inst.BuyTrade != nil {
+				totalBuyPrice += inst.BuyTrade.UnitPrice * qty
+			}
+		}
+		var avgBuyPrice int64
+		if totalQty > 0 {
+			avgBuyPrice = totalBuyPrice / totalQty
+		}
+		if len(insts) > 0 {
+			wt = insts[0].WeaponType
+		}
+		groups = append(groups, InventoryGroup{
+			ItemName:      name,
+			WeaponType:    wt,
+			Count:         len(insts),
+			TotalQuantity: totalQty,
+			TotalBuyPrice: totalBuyPrice,
+			AvgBuyPrice:   avgBuyPrice,
+			// MarketPrice and UnrealizedPl left nil until price source is integrated
+			Instances: insts,
+		})
+	}
+	return groups, nil
+}
+
+func (s *service) sortGroups(groups []InventoryGroup, sortBy, sortDir string) {
+	desc := sortDir == "desc"
+	sort.Slice(groups, func(i, j int) bool {
+		a, b := groups[i], groups[j]
+		var less bool
+		switch sortBy {
+		case "count":
+			less = a.Count < b.Count
+		case "totalBuyPrice":
+			less = a.TotalBuyPrice < b.TotalBuyPrice
+		case "avgBuyPrice":
+			less = a.AvgBuyPrice < b.AvgBuyPrice
+		case "totalQuantity":
+			less = a.TotalQuantity < b.TotalQuantity
+		case "marketPrice":
+			less = ptrValue(a.MarketPrice) < ptrValue(b.MarketPrice)
+		case "unrealizedPl":
+			less = ptrValue(a.UnrealizedPl) < ptrValue(b.UnrealizedPl)
+		default:
+			less = a.ItemName < b.ItemName
+		}
+		if desc {
+			return !less
+		}
+		return less
+	})
 }
 
 func (s *service) GetItemDetail(accountID uint, assetID string) (*ItemDetail, error) {

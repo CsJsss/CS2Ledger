@@ -27,6 +27,7 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
+import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import Paper from "@mui/material/Paper";
@@ -94,47 +95,47 @@ function TradeDetailDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
-        Trade Details — {trade.itemName}
+        交易详情 — {trade.itemName}
       </DialogTitle>
       <DialogContent dividers>
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Typography variant="overline" color="text.secondary">Buy Order</Typography>
+            <Typography variant="overline" color="text.secondary">买入订单</Typography>
             <Box sx={{ mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-              <Typography variant="body2">Platform: {platformLabel(buy.source)}</Typography>
-              <Typography variant="body2">Price: {formatCNY(buy.unitPrice)}</Typography>
-              <Typography variant="body2">Qty: {buy.quantity}</Typography>
-              <Typography variant="body2">Total: {formatCNY(buy.totalPrice)}</Typography>
-              <Typography variant="body2">Fee: {formatCNY(buy.fee)}</Typography>
-              <Typography variant="body2">Date: {new Date(buy.tradeAt).toLocaleDateString()}</Typography>
+              <Typography variant="body2">平台: {platformLabel(buy.source)}</Typography>
+              <Typography variant="body2">价格: {formatCNY(buy.unitPrice)}</Typography>
+              <Typography variant="body2">数量: {buy.quantity}</Typography>
+              <Typography variant="body2">总额: {formatCNY(buy.totalPrice)}</Typography>
+              <Typography variant="body2">手续费: {formatCNY(buy.fee)}</Typography>
+              <Typography variant="body2">日期: {new Date(buy.tradeAt).toLocaleDateString()}</Typography>
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="overline" color="text.secondary">Sell Order</Typography>
+            <Typography variant="overline" color="text.secondary">卖出订单</Typography>
             <Box sx={{ mt: 0.5, display: "flex", flexDirection: "column", gap: 0.5 }}>
-              <Typography variant="body2">Platform: {platformLabel(sell.source)}</Typography>
-              <Typography variant="body2">Price: {formatCNY(sell.unitPrice)}</Typography>
-              <Typography variant="body2">Qty: {sell.quantity}</Typography>
-              <Typography variant="body2">Total: {formatCNY(sell.totalPrice)}</Typography>
-              <Typography variant="body2">Fee: {formatCNY(sell.fee)}</Typography>
-              <Typography variant="body2">Date: {new Date(sell.tradeAt).toLocaleDateString()}</Typography>
+              <Typography variant="body2">平台: {platformLabel(sell.source)}</Typography>
+              <Typography variant="body2">价格: {formatCNY(sell.unitPrice)}</Typography>
+              <Typography variant="body2">数量: {sell.quantity}</Typography>
+              <Typography variant="body2">总额: {formatCNY(sell.totalPrice)}</Typography>
+              <Typography variant="body2">手续费: {formatCNY(sell.fee)}</Typography>
+              <Typography variant="body2">日期: {new Date(sell.tradeAt).toLocaleDateString()}</Typography>
             </Box>
           </Grid>
         </Grid>
         <Divider sx={{ my: 2 }} />
         <Box sx={{ display: "flex", gap: 3 }}>
           <Box>
-            <Typography variant="overline" color="text.secondary">Gross P/L</Typography>
+            <Typography variant="overline" color="text.secondary">毛利</Typography>
             <Typography variant="body2" color={plHexColor(trade.grossPl)} fontWeight={500}>
               {formatCNY(trade.grossPl)}
             </Typography>
           </Box>
           <Box>
-            <Typography variant="overline" color="text.secondary">Total Fees</Typography>
+            <Typography variant="overline" color="text.secondary">手续费</Typography>
             <Typography variant="body2">{formatCNY(trade.totalFee)}</Typography>
           </Box>
           <Box>
-            <Typography variant="overline" color="text.secondary">Net P/L</Typography>
+            <Typography variant="overline" color="text.secondary">净利润</Typography>
             <Typography variant="body2" color={plHexColor(trade.netPl)} fontWeight={600}>
               {formatCNY(trade.netPl)}
             </Typography>
@@ -164,17 +165,17 @@ function UnmatchedSellDetailDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
-        Sell Order — {sell.itemName}
+        卖出订单 — {sell.itemName}
       </DialogTitle>
       <DialogContent dividers>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-          <Typography variant="body2">Platform: {platformLabel(sell.source)}</Typography>
-          <Typography variant="body2">Exterior: {sell.exterior || "-"}</Typography>
-          <Typography variant="body2">Price: {formatCNY(sell.unitPrice)}</Typography>
-          <Typography variant="body2">Qty: {sell.quantity}</Typography>
-          <Typography variant="body2">Total: {formatCNY(sell.totalPrice)}</Typography>
-          <Typography variant="body2">Fee: {formatCNY(sell.fee)}</Typography>
-          <Typography variant="body2">Date: {new Date(sell.tradeAt).toLocaleDateString()}</Typography>
+          <Typography variant="body2">平台: {platformLabel(sell.source)}</Typography>
+          <Typography variant="body2">磨损: {sell.exterior || "-"}</Typography>
+          <Typography variant="body2">价格: {formatCNY(sell.unitPrice)}</Typography>
+          <Typography variant="body2">数量: {sell.quantity}</Typography>
+          <Typography variant="body2">总额: {formatCNY(sell.totalPrice)}</Typography>
+          <Typography variant="body2">手续费: {formatCNY(sell.fee)}</Typography>
+          <Typography variant="body2">日期: {new Date(sell.tradeAt).toLocaleDateString()}</Typography>
           {sell.assetId && <Typography variant="body2">Asset ID: {sell.assetId}</Typography>}
         </Box>
       </DialogContent>
@@ -298,12 +299,17 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
   const [dismissed, setDismissed] = useState(false);
   const [detailTrade, setDetailTrade] = useState<trade.CompletedTradeView | null>(null);
 
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [sortBy, setSortBy] = useState("itemName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   const {
-    data: trades = [],
+    data,
     isLoading: tradesLoading,
     error: tradesError,
     refetch: refetchTrades,
-  } = useCompletedTrades(accountId);
+  } = useCompletedTrades(accountId, { page: page + 1, pageSize, sortBy, sortDir });
 
   const {
     data: summary,
@@ -314,32 +320,14 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
   const isLoading = tradesLoading || summaryLoading;
   const error = tradesError || summaryError;
 
-  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
+  const allGroups: GroupedTrade[] = data?.groups ?? [];
+  const total = data?.total ?? 0;
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, trade.CompletedTradeView[]>();
-    for (const t of trades) {
-      const name = t.itemName ?? "Unknown";
-      const arr = map.get(name);
-      if (arr) arr.push(t);
-      else map.set(name, [t]);
-    }
-    return Array.from(map, ([itemName, trades]) => {
-      let totalGrossPl = 0;
-      let totalFee = 0;
-      let totalNetPl = 0;
-      let totalBuyPrice = 0;
-      let totalSellPrice = 0;
-      for (const t of trades) {
-        totalGrossPl += t.grossPl;
-        totalFee += t.totalFee;
-        totalNetPl += t.netPl;
-        totalBuyPrice += t.buyTrade.totalPrice;
-        totalSellPrice += t.sellTrade.totalPrice;
-      }
-      return { itemName, count: trades.length, trades, totalBuyPrice, totalSellPrice, totalGrossPl, totalFee, totalNetPl };
-    }).sort((a, b) => a.itemName.localeCompare(b.itemName));
-  }, [trades]);
+  const groups = searchQuery
+    ? allGroups.filter((g) => g.itemName.toLowerCase().includes(searchQuery.toLowerCase()))
+    : allGroups;
+
+  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
 
   const toggle = (name: string) => {
     setExpandedNames((prev) => {
@@ -350,20 +338,11 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
     });
   };
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const table = useReactTable({
-    data: grouped,
-    columns: groupedColumns,
-    state: { sorting, globalFilter: searchQuery },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: () => {},
-    globalFilterFn: (row, _columnId, filterValue) =>
-      row.original.itemName.toLowerCase().includes((filterValue as string).toLowerCase()),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.itemName,
-  });
+  const handleSort = (sb: string, sd: string) => {
+    setSortBy(sb);
+    setSortDir(sd as "asc" | "desc");
+    setPage(0);
+  };
 
   if (isLoading) {
     return (
@@ -384,7 +363,7 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
     return (
       <Box mt={3}>
         <ErrorBanner
-          message={`Failed to load trades: ${String(error)}`}
+          message={`加载交易数据失败: ${String(error)}`}
           onRetry={() => { setDismissed(false); void refetchTrades(); }}
           onDismiss={() => setDismissed(true)}
         />
@@ -403,138 +382,162 @@ function CompletedTradesContent({ accountId, searchQuery }: { accountId: number 
         totalNetPl={summary.totalNetPl}
       />
 
-      {trades.length === 0 && (
+      {groups.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="No completed trades" description="Sync to populate trade data and calculate P/L." />
+          <EmptyState title="暂无已完成交易" description="同步账户数据后将在此显示交易和盈亏。" />
         </Box>
       )}
 
-      {trades.length > 0 && (
+      {groups.length > 0 && (
         <Box mt={3}>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      const sorted = header.column.getIsSorted();
-                      return (
-                        <TableCell
-                          key={header.id}
-                          align={header.column.columnDef.meta?.align}
-                          sortDirection={sorted || false}
-                          sx={{ py: 1 }}
+          <Paper>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ py: 1 }} />
+                    {([
+                      ["itemName", "物品名称", false],
+                      ["count", "交易数", true],
+                      ["totalBuy", "买入总额", true],
+                      ["totalSell", "卖出总额", true],
+                      ["grossPl", "毛利", true],
+                      ["fees", "手续费", true],
+                      ["netPl", "净利润", true],
+                    ] as [string, string, boolean][]).map(([key, label, right]) => (
+                      <TableCell key={key} sx={{ py: 1 }} align={right ? "right" : "left"}>
+                        <TableSortLabel
+                          active={sortBy === key}
+                          direction={sortBy === key ? sortDir : "asc"}
+                          onClick={() => {
+                            if (sortBy === key && sortDir === "asc") handleSort(key, "desc");
+                            else handleSort(key, "asc");
+                          }}
                         >
-                          {canSort ? (
-                            <TableSortLabel
-                              active={!!sorted}
-                              direction={sorted || undefined}
-                              onClick={() => {
-                                if (sorted === "desc") header.column.clearSorting();
-                                else header.column.toggleSorting(sorted === "asc");
-                              }}
-                            >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                            </TableSortLabel>
-                          ) : (
-                            flexRender(header.column.columnDef.header, header.getContext())
-                          )}
-                        </TableCell>
-                      );
-                    })}
+                          {label}
+                        </TableSortLabel>
+                      </TableCell>
+                    ))}
                   </TableRow>
-                ))}
-              </TableHead>
-              <TableBody>
-                {table.getRowModel().rows.map((groupRow) => {
-                  const expanded = expandedNames.has(groupRow.original.itemName);
-                  return (
-                    <React.Fragment key={groupRow.id}>
-                      <TableRow
-                        hover
-                        sx={{ bgcolor: "grey.50", cursor: "pointer" }}
-                        onClick={() => toggle(groupRow.original.itemName)}
-                      >
-                        {groupRow.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} align={cell.column.columnDef.meta?.align} sx={{ py: 1 }}>
-                            {flexRender(cell.column.columnDef.cell, {
-                              ...cell.getContext(),
-                              row: { ...groupRow, getIsExpanded: () => expanded },
-                            })}
+                </TableHead>
+                <TableBody>
+                  {groups.map((group) => {
+                    const expanded = expandedNames.has(group.itemName);
+                    return (
+                      <React.Fragment key={group.itemName}>
+                        <TableRow
+                          hover
+                          sx={{ bgcolor: "grey.50", cursor: "pointer" }}
+                          onClick={() => toggle(group.itemName)}
+                        >
+                          <TableCell sx={{ py: 1 }}>
+                            <IconButton size="small">
+                              {expanded ? (
+                                <KeyboardArrowDownIcon fontSize="small" />
+                              ) : (
+                                <KeyboardArrowRightIcon fontSize="small" />
+                              )}
+                            </IconButton>
                           </TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow sx={{ "& td": { border: 0 } }}>
-                        <TableCell colSpan={groupedColumns.length} sx={{ p: 0 }}>
-                          <Collapse in={expanded}>
-                            <Box sx={{ mx: 2, my: 1 }}>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5, width: 40 }} />
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Item Name</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Exterior</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Buy Price</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Sell Price</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Qty</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Buy Total</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Sell Total</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Gross P/L</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Fees</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Net P/L</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Sell Date</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Details</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {groupRow.original.trades.map((t) => (
-                                    <TableRow key={String(t.sellTrade.ID)} hover>
-                                      <TableCell sx={{ py: 0.5, width: 40 }} />
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2" fontWeight={500}>{t.itemName}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2" color="text.secondary">{t.exterior || "-"}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.buyTrade.unitPrice)}</TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.sellTrade.unitPrice)}</TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2">{t.quantity}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.buyTrade.totalPrice)}</TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.sellTrade.totalPrice)}</TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2" color={plHexColor(t.grossPl)}>{formatCNY(t.grossPl)}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.totalFee)}</TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2" fontWeight={600} color={plHexColor(t.netPl)}>{formatCNY(t.netPl)}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2" color="text.secondary">
-                                          {new Date(t.sellTrade.tradeAt).toLocaleDateString()}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <IconButton size="small" onClick={() => setDetailTrade(t)}>
-                                          <InfoIcon fontSize="small" />
-                                        </IconButton>
-                                      </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" fontWeight={500}>{group.itemName}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2">{String(group.count)}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">{formatCNY(group.totalBuyPrice)}</TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">{formatCNY(group.totalSellPrice)}</TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2" color={plHexColor(group.totalGrossPl)}>{formatCNY(group.totalGrossPl)}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">{formatCNY(group.totalFee)}</TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2" fontWeight={600} color={plHexColor(group.totalNetPl)}>{formatCNY(group.totalNetPl)}</Typography>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow sx={{ "& td": { border: 0 } }}>
+                          <TableCell colSpan={groupedColumns.length} sx={{ p: 0 }}>
+                            <Collapse in={expanded}>
+                              <Box sx={{ mx: 2, my: 1 }}>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5, width: 40 }} />
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>物品名称</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>磨损</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">买入价</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">卖出价</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">数量</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">买入总额</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">卖出总额</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">毛利</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">手续费</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">净利润</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">卖出日期</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>详情</TableCell>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                                  </TableHead>
+                                  <TableBody>
+                                    {group.trades.map((t) => (
+                                      <TableRow key={String(t.sellTrade.ID)} hover>
+                                        <TableCell sx={{ py: 0.5, width: 40 }} />
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" fontWeight={500}>{t.itemName}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" color="text.secondary">{t.exterior || "-"}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.buyTrade.unitPrice)}</TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.sellTrade.unitPrice)}</TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2">{t.quantity}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.buyTrade.totalPrice)}</TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.sellTrade.totalPrice)}</TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" color={plHexColor(t.grossPl)}>{formatCNY(t.grossPl)}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">{formatCNY(t.totalFee)}</TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" fontWeight={600} color={plHexColor(t.netPl)}>{formatCNY(t.netPl)}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" color="text.secondary">
+                                            {new Date(t.sellTrade.tradeAt).toLocaleDateString()}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <IconButton size="small" onClick={() => setDetailTrade(t)}>
+                                            <InfoIcon fontSize="small" />
+                                          </IconButton>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              rowsPerPage={pageSize}
+              onPageChange={(_, p) => setPage(p)}
+              onRowsPerPageChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[20, 50, 100]}
+            />
+          </Paper>
 
           <TradeDetailDialog
             open={!!detailTrade}
@@ -631,7 +634,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
     return (
       <Box mt={3}>
         <ErrorBanner
-          message={`Failed to load unmatched sells: ${String(error)}`}
+          message={`加载未匹配卖出数据失败: ${String(error)}`}
           onRetry={() => { setDismissed(false); void refetch(); }}
           onDismiss={() => setDismissed(true)}
         />
@@ -645,7 +648,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
         <Grid item xs={4}>
           <Card>
             <CardContent>
-              <Typography variant="body2" color="text.secondary">Unmatched Sells</Typography>
+              <Typography variant="body2" color="text.secondary">未匹配卖出</Typography>
               <Typography variant="h5" mt={1}>{totalSells}</Typography>
             </CardContent>
           </Card>
@@ -653,7 +656,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
         <Grid item xs={4}>
           <Card>
             <CardContent>
-              <Typography variant="body2" color="text.secondary">Total Sell Value</Typography>
+              <Typography variant="body2" color="text.secondary">卖出总额</Typography>
               <Typography variant="h5" mt={1}>{formatCNY(totalSellValue)}</Typography>
             </CardContent>
           </Card>
@@ -661,7 +664,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
         <Grid item xs={4}>
           <Card>
             <CardContent>
-              <Typography variant="body2" color="text.secondary">Total Fees</Typography>
+              <Typography variant="body2" color="text.secondary">手续费总额</Typography>
               <Typography variant="h5" mt={1}>{formatCNY(totalFees)}</Typography>
             </CardContent>
           </Card>
@@ -670,7 +673,7 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
 
       {sells.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="No unmatched sells" description="All sells have been matched to buy orders." />
+          <EmptyState title="无未匹配卖出" description="所有卖出订单均已匹配到买入订单。" />
         </Box>
       )}
 
@@ -738,15 +741,15 @@ function UnmatchedSellsContent({ accountId, searchQuery }: { accountId: number |
                                 <TableHead>
                                   <TableRow>
                                     <TableCell sx={{ fontSize: "0.75rem", py: 0.5, width: 40 }} />
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Item Name</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Exterior</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Price</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Qty</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Total</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Fee</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">Sell Date</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Platform</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>Details</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>物品名称</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>磨损</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">价格</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">数量</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">总额</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">手续费</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }} align="right">卖出日期</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>平台</TableCell>
+                                    <TableCell sx={{ fontSize: "0.75rem", py: 0.5 }}>详情</TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -814,13 +817,13 @@ export default function CompletedTradesPage() {
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h4" gutterBottom>Trades</Typography>
-        <PageSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Filter by item name..." />
+        <Typography variant="h4" gutterBottom>交易记录</Typography>
+        <PageSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="搜索物品名称..." />
       </Box>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v as TabKey)} sx={{ mb: 1 }}>
-        <Tab label="Completed" value="completed" />
-        <Tab label="Unmatched Sells" value="unmatched" />
+        <Tab label="已完成" value="completed" />
+        <Tab label="未匹配卖出" value="unmatched" />
       </Tabs>
 
       {tab === "completed" && <CompletedTradesContent accountId={selectedAccountId} searchQuery={searchQuery} />}

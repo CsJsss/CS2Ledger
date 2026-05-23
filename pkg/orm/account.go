@@ -42,9 +42,11 @@ func (o *ormImpl) UpdateAccountStatus(id uint, status string) error {
 		Update("status", status).Error
 }
 
-func (o *ormImpl) UpdateAccountBalanceAndSyncTime(id uint, available, purchase int64, syncAt int64) error {
+func (o *ormImpl) UpdateAccountBalanceAndSyncTime(id uint, available, frozen, instant, purchase int64, syncAt int64) error {
 	return o.db.Model(&model.Account{}).Where("id = ?", id).Updates(map[string]any{
 		"available_balance": available,
+		"frozen_balance":    frozen,
+		"instant_balance":   instant,
 		"purchase_balance":  purchase,
 		"last_sync_at":      syncAt,
 	}).Error

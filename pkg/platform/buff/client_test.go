@@ -99,6 +99,9 @@ func TestClient_FetchBalance(t *testing.T) {
 	if bal.Frozen != 30.0 {
 		t.Errorf("expected frozen 30.00, got %v", bal.Frozen)
 	}
+	if bal.Instant != 0 {
+		t.Errorf("expected instant 0, got %v", bal.Instant)
+	}
 }
 
 func TestClient_Verify(t *testing.T) {

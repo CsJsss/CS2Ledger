@@ -3,18 +3,19 @@ package youpin
 import "encoding/json"
 
 type youpinBuyProduct struct {
-	AssertID        int64       `json:"assertId"`
-	CommodityID     int64       `json:"commodityId"`
-	CommodityName   string      `json:"commodityName"`
-	Price           json.Number `json:"price"`           // 元, e.g. 1610.00
-	CommodityAmount json.Number `json:"commodityAmount"` // 该商品总价 (元)
-	CommodityAbrade string      `json:"commodityAbrade"` // 磨损度
-	ExteriorName    string      `json:"exteriorName"`    // 磨损范围 (e.g., 久经沙场)
-	RarityName      string      `json:"rarityName"`      // 稀有度
-	ItemSetName     string      `json:"itemSetName"`     // 套装
-	TypeName        string      `json:"typeName"`        // 武器类型
-	PaintIndex      int         `json:"paintIndex"`
-	PaintSeed       int         `json:"paintSeed"`
+	AssertID          int64       `json:"assertId"`
+	CommodityID       int64       `json:"commodityId"`
+	CommodityName     string      `json:"commodityName"`
+	CommodityHashName string      `json:"commodityHashName"` // market hash name, e.g. "M4A4 | Asiimov (Field-Tested)"
+	Price             json.Number `json:"price"`             // 元, e.g. 1610.00
+	CommodityAmount   json.Number `json:"commodityAmount"`   // 该商品总价 (元)
+	CommodityAbrade   string      `json:"commodityAbrade"`   // 磨损度
+	ExteriorName      string      `json:"exteriorName"`      // 磨损范围 (e.g., 久经沙场)
+	RarityName        string      `json:"rarityName"`        // 稀有度
+	ItemSetName       string      `json:"itemSetName"`       // 套装
+	TypeName          string      `json:"typeName"`          // 武器类型
+	PaintIndex        int         `json:"paintIndex"`
+	PaintSeed         int         `json:"paintSeed"`
 }
 
 type youpinBuyOrder struct {
@@ -46,18 +47,19 @@ type youpinSellOrder struct {
 	CommodityNum    int         `json:"commodityNum"`
 	OrderStatusName string      `json:"orderStatusName"`
 	ProductDetail   struct {
-		AssertID        int64       `json:"assertId"`
-		CommodityID     int64       `json:"commodityId"`
-		CommodityName   string      `json:"commodityName"`
-		Price           json.Number `json:"price"`           // 单价 (元)
-		CommodityAmount json.Number `json:"commodityAmount"` // 单品总价 (元)
-		CommodityAbrade string      `json:"commodityAbrade"` // 磨损度
-		ExteriorName    string      `json:"exteriorName"`    // 磨损范围
-		RarityName      string      `json:"rarityName"`      // 稀有度
-		ItemSetName     string      `json:"itemSetName"`     // 套装
-		TypeName        string      `json:"typeName"`        // 武器类型
-		PaintIndex      int         `json:"paintIndex"`
-		PaintSeed       int         `json:"paintSeed"`
+		AssertID          int64       `json:"assertId"`
+		CommodityID       int64       `json:"commodityId"`
+		CommodityName     string      `json:"commodityName"`
+		CommodityHashName string      `json:"commodityHashName"` // market hash name
+		Price             json.Number `json:"price"`             // 单价 (元)
+		CommodityAmount   json.Number `json:"commodityAmount"`   // 单品总价 (元)
+		CommodityAbrade   string      `json:"commodityAbrade"`   // 磨损度
+		ExteriorName      string      `json:"exteriorName"`      // 磨损范围
+		RarityName        string      `json:"rarityName"`        // 稀有度
+		ItemSetName       string      `json:"itemSetName"`       // 套装
+		TypeName          string      `json:"typeName"`          // 武器类型
+		PaintIndex        int         `json:"paintIndex"`
+		PaintSeed         int         `json:"paintSeed"`
 	} `json:"productDetail"`
 }
 
@@ -68,4 +70,52 @@ type youpinSellPageResponse struct {
 		TotalCount  int               `json:"total"`
 		OrderRevert any               `json:"orderRevertInfo"`
 	} `json:"data"`
+}
+
+// --- Balance ---
+
+type youpinBalanceResponse struct {
+	Code      int             `json:"code"`
+	Msg       string          `json:"msg"`
+	Timestamp int64           `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
+}
+
+type youpinBalanceData struct {
+	Balance                 string                  `json:"balance"`
+	BalanceFroze            string                  `json:"balanceFroze"`
+	ShowBalance2            bool                    `json:"showBalance2"`
+	PreSellTitle            *string                 `json:"preSellTitle"`
+	PurchaseBalance         string                  `json:"purchaseBalance"`
+	PurchaseBalanceWithdraw string                  `json:"purchaseBalanceWithdraw"`
+	PurchaseBalanceTransfer string                  `json:"purchaseBalanceTransfer"`
+	AvailableTotalAmountStr string                  `json:"availableTotalAmountStr"`
+	AvailableTotalAmount    string                  `json:"availableTotalAmount"`
+	TradeOnlyTotalAmountStr string                  `json:"tradeOnlyTotalAmountStr"`
+	TradeOnlyTotalAmount    string                  `json:"tradeOnlyTotalAmount"`
+	FrozeTotalAmountStr     string                  `json:"frozeTotalAmountStr"`
+	FrozeTotalAmount        string                  `json:"frozeTotalAmount"`
+	Currency                string                  `json:"currency"`
+	ForceUpdate             bool                    `json:"forceUpdate"`
+	ShowAccountV2           bool                    `json:"showAccountV2"`
+	WithdrawMaxMoneyLabel   *string                 `json:"withdrawMaxMoneyLabel"`
+	WithdrawMaxMoney        *string                 `json:"withdrawMaxMoney"`
+	ShowBankCardWithdraw    *string                 `json:"showBankCardWithdraw"`
+	WithdrawInfo            *string                 `json:"withdrawInfo"`
+	TipContent              string                  `json:"tipContent"`
+	List                    []youpinBalanceListItem `json:"list"`
+}
+
+type youpinBalanceListItem struct {
+	BalanceTitle       string `json:"balanceTitle"`
+	Amount             string `json:"amount"`
+	AmountStr          string `json:"amountStr"`
+	AvailableAmount    string `json:"availableAmount"`
+	AvailableAmountStr string `json:"availableAmountStr"`
+	FrozeAmount        string `json:"frozeAmount"`
+	FrozeAmountStr     string `json:"frozeAmountStr"`
+	WithdrawTitle      string `json:"withdrawTitle"`
+	QuestionDesc       string `json:"questionDesc"`
+	Type               int    `json:"type"`
+	BalanceType        int    `json:"balanceType"`
 }

@@ -10,8 +10,7 @@ cs2-ledger.exe
 # data
 data/
 
-# Wails generated
-frontend/wailsjs/
+# Wails bindings cache
 wailsbindings/
 
 # IDE
@@ -54,3 +53,7 @@ frontend/.env.*.local
 # Archive
 *.zip
 *.tar.gz
+
+# AI Agent
+.superpowers/
+docs/superpowers

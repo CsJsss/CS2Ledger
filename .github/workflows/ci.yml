@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -14,10 +17,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v6
+      - uses: actions/setup-node@v4
         with:
-          version: latest
-          args: --timeout=5m
+          node-version: "22"
+      - run: cd frontend && npm ci && npm run build
+      - run: go tool golangci-lint run --timeout=5m
 
   test:
     runs-on: ubuntu-latest
@@ -26,6 +30,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: cd frontend && npm ci && npm run build
       - run: go test ./... -v -race -count=1
 
   build:
@@ -39,5 +47,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: cd frontend && npm ci
+      - run: cd frontend && npm ci && npm run build
       - run: go build -o cs2-ledger .

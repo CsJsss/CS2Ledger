@@ -172,7 +172,7 @@ export default function PnLPage() {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Profit &amp; Loss
+        盈亏
       </Typography>
 
       {isLoading && (
@@ -194,7 +194,7 @@ export default function PnLPage() {
       {error && !dismissed && (
         <Box mt={3}>
           <ErrorBanner
-            message={`Failed to load P&L data: ${String(error)}`}
+            message={`加载盈亏数据失败: ${String(error)}`}
             onRetry={() => {
               setDismissed(false);
               void refetchSummary();
@@ -225,7 +225,7 @@ export default function PnLPage() {
                   gap: 1,
                 }}
               >
-                <Typography variant="h6">P&amp;L Chart</Typography>
+                <Typography variant="h6">盈亏图表</Typography>
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <FormControl size="small" sx={{ minWidth: 100 }}>
                     <Select
@@ -236,7 +236,7 @@ export default function PnLPage() {
                     >
                       {years.map((y) => (
                         <MenuItem key={String(y)} value={y}>
-                          {y === "all" ? "ALL" : String(y)}
+                          {y === "all" ? "全部" : String(y)}
                         </MenuItem>
                       ))}
                     </Select>
@@ -250,7 +250,7 @@ export default function PnLPage() {
                   textAlign="center"
                   py={4}
                 >
-                  No data for {year === "all" ? "all years" : year}
+                  {year === "all" ? "全部年份" : year} 暂无数据
                 </Typography>
               )}
 

@@ -22,25 +22,27 @@ type ormImpl struct {
 	db *gorm.DB
 }
 
-func NewORM(sqlDB *sql.DB, migrations MigrationFS) (ORMInterface, error) {
+type GormDB = gorm.DB
+
+func NewORM(sqlDB *sql.DB, migrations MigrationFS) (ORMInterface, *GormDB, error) {
 	gormDB, err := gorm.Open(sqlite.Dialector{Conn: sqlDB}, &gorm.Config{
 		SkipDefaultTransaction: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("orm: gorm open: %w", err)
+		return nil, nil, fmt.Errorf("orm: gorm open: %w", err)
 	}
 
 	if err := runMigrations(gormDB, migrations); err != nil {
-		return nil, fmt.Errorf("orm: migrate: %w", err)
+		return nil, nil, fmt.Errorf("orm: migrate: %w", err)
 	}
 
-	return &ormImpl{db: gormDB}, nil
+	return &ormImpl{db: gormDB}, gormDB, nil
 }
 
-func NewTestORM() (ORMInterface, error) {
+func NewTestORM() (ORMInterface, *GormDB, error) {
 	sqlDB, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
-		return nil, fmt.Errorf("orm test: %w", err)
+		return nil, nil, fmt.Errorf("orm test: %w", err)
 	}
 	sqlDB.SetMaxOpenConns(1)
 
@@ -49,7 +51,7 @@ func NewTestORM() (ORMInterface, error) {
 	})
 	if err != nil {
 		_ = sqlDB.Close()
-		return nil, fmt.Errorf("orm: gorm open: %w", err)
+		return nil, nil, fmt.Errorf("orm: gorm open: %w", err)
 	}
 
 	if err := gormDB.AutoMigrate(
@@ -60,7 +62,7 @@ func NewTestORM() (ORMInterface, error) {
 		&model.PnlDaily{},
 	); err != nil {
 		_ = sqlDB.Close()
-		return nil, fmt.Errorf("orm: automigrate: %w", err)
+		return nil, nil, fmt.Errorf("orm: automigrate: %w", err)
 	}
 
 	// AutoMigrate can't create composite unique indexes spanning parent and embedded struct fields.
@@ -69,10 +71,10 @@ func NewTestORM() (ORMInterface, error) {
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_asset ON inventory(account_id, asset_id)",
 	).Error; err != nil {
 		_ = sqlDB.Close()
-		return nil, fmt.Errorf("orm: create index: %w", err)
+		return nil, nil, fmt.Errorf("orm: create index: %w", err)
 	}
 
-	return &ormImpl{db: gormDB}, nil
+	return &ormImpl{db: gormDB}, gormDB, nil
 }
 
 func runMigrations(db *gorm.DB, migrations MigrationFS) error {

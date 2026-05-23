@@ -39,3 +39,59 @@ func (o *ormImpl) FindInventoryByAssetID(accountID uint, assetID string) (*model
 	}
 	return &item, err
 }
+
+// FindInventoryGroupNames returns paginated distinct item names for an account.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindInventoryGroupNames(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]string, int64, error) {
+	var total int64
+	q := o.db.Model(&model.InventoryItem{})
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if weaponType != "" {
+		q = q.Where("weapon_type = ?", weaponType)
+	}
+	if err := q.Select("COUNT(DISTINCT item_name)").Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var names []string
+	q2 := o.db.Model(&model.InventoryItem{}).Select("item_name")
+	if accountID != 0 {
+		q2 = q2.Where("account_id = ?", accountID)
+	} else {
+		q2 = q2.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	if status != "" {
+		q2 = q2.Where("status = ?", status)
+	}
+	if weaponType != "" {
+		q2 = q2.Where("weapon_type = ?", weaponType)
+	}
+	err := q2.Group("item_name").Order(sortBy+" "+sortDir).
+		Offset(offset).Limit(limit).
+		Pluck("item_name", &names).Error
+	return names, total, err
+}
+
+// FindInventoryByItemNames returns inventory items matching the given item names.
+// Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindInventoryByItemNames(accountID uint, itemNames []string) ([]model.InventoryItem, error) {
+	if len(itemNames) == 0 {
+		return nil, nil
+	}
+	var items []model.InventoryItem
+	q := o.db.Where("item_name IN ?", itemNames)
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	} else {
+		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
+	}
+	err := q.Preload("BuyTrade").Order("updated_at DESC").Find(&items).Error
+	return items, err
+}

@@ -23,12 +23,12 @@ const DRAWER_WIDTH = 224;
 const APPBAR_HEIGHT = 56;
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/inventory", label: "Inventory" },
-  { to: "/trades/completed", label: "Trades" },
-  { to: "/pnl", label: "P&L" },
-  { to: "/accounts", label: "Accounts" },
-  { to: "/settings", label: "Settings" },
+  { to: "/dashboard", label: "仪表盘" },
+  { to: "/inventory", label: "持仓" },
+  { to: "/trades/completed", label: "交易记录" },
+  { to: "/pnl", label: "盈亏" },
+  { to: "/accounts", label: "账户管理" },
+  { to: "/settings", label: "设置" },
 ];
 
 export default function AppLayout() {

@@ -52,8 +52,7 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
     openssl rsa -in private_key.pem -pubout -out public_key.pem
     ```
 3. 在ECO 开放平台设置中, 开启签名验证, 并上传RSA公钥
-4. 找到 **Partner ID** 和 **RSA 私钥**（通常为 PEM 格式）
-5. 在添加账户的 Cookie 输入框中填入：`你的PartnerId:-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----`
+4. 找到 **Partner ID** 和 **RSA 私钥**（通常为 PEM 格式），添加到ECO账号
 
 > 私钥中的换行可以用 `\n` 表示，直接写在一行或多行粘贴均可。
 
@@ -61,7 +60,7 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
 
 - **账户管理：** 连接多平台、多账号，统一管理
 - **库存管理：** 库存快照、对比、详情查看、导出
-- **交易记录：** 买入/卖出历史自动拉取，支持手动录入，批次成本追踪
+- **交易记录：** 买入/卖出历史自动拉取
 - **盈亏计算：** 已实现盈亏、浮动盈亏、综合 P&L
 - **仪表盘：** 资产净值、分布图、趋势图
 
@@ -85,7 +84,7 @@ ECO 使用开放平台 API，凭据格式为 `PartnerId:私钥PEM`。
 
 - 账户与平台连接（BUFF / 悠悠有品 / C5 / ECO / IGXE）
 - 库存管理（快照、对比、详情、导出）
-- 交易记录（自动拉取 + 手动录入 + 批次成本追踪）
+- 交易记录（自动拉取）
 - 已实现盈亏 & 综合 P&L
 - 仪表盘（净值、分布图、趋势图）
 
@@ -193,4 +192,5 @@ make db-new NAME=add_xxx_table   # 创建新迁移文件
 
 ## 参考
 
-BUFF/悠悠有品的 API 交互逻辑参考了 [SteamAuto](https://github.com/jiajiaxd/SteamAuto) 项目的实现。
+- [CSQAQ](https://docs.csqaq.com/) — 行情数据
+- [SteamAuto](https://github.com/jiajiaxd/SteamAuto) — BUFF/悠悠有品 API 交互逻辑参考

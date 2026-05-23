@@ -16,6 +16,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/service"
 	"github.com/CsJsss/CS2Ledger/pkg/service/account"
 	"github.com/CsJsss/CS2Ledger/pkg/service/inventory"
+	"github.com/CsJsss/CS2Ledger/pkg/service/market"
 	"github.com/CsJsss/CS2Ledger/pkg/service/pnl"
 	"github.com/CsJsss/CS2Ledger/pkg/service/rental"
 	"github.com/CsJsss/CS2Ledger/pkg/service/sync"
@@ -47,6 +48,7 @@ func main() {
 		rental.Module,
 		pnl.Module,
 		inventory.Module,
+		market.Module,
 		sync.Module,
 		service.Module,
 

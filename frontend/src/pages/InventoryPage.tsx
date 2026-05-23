@@ -1,14 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
-import {
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  useReactTable,
-  type ColumnDef,
-  type SortingState,
-} from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -16,6 +8,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
+import TablePagination from "@mui/material/TablePagination";
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
@@ -28,7 +21,7 @@ import EmptyState from "../components/EmptyState";
 import PageSearchBar from "../components/PageSearchBar";
 import { useInventory } from "../hooks/useInventory";
 import { useUIStore } from "../store/uiStore";
-import { formatCNY } from "../lib/format";
+import { formatCNY, plHexColor } from "../lib/format";
 import { inventoryStatusLabel, inventoryStatusColor, platformLabel } from "../lib/constants";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
@@ -44,17 +37,23 @@ declare module "@tanstack/react-table" {
   }
 }
 
-interface GroupedItem {
+interface GroupRowData {
   itemName: string;
   weaponType: string;
   count: number;
+  totalQuantity: number;
+  totalBuyPrice: number;
+  avgBuyPrice: number;
+  marketPrice?: number;
+  unrealizedPl?: number;
   instances: model.InventoryItem[];
 }
 
-const groupedColumns: ColumnDef<GroupedItem>[] = [
+const groupedColumns: ColumnDef<GroupRowData>[] = [
   {
     id: "expander",
     header: "",
+    enableSorting: false,
     cell: ({ row }) => (
       <IconButton size="small">
         {row.getIsExpanded?.() ? (
@@ -68,6 +67,7 @@ const groupedColumns: ColumnDef<GroupedItem>[] = [
   {
     accessorKey: "weaponType",
     header: "类型",
+    enableSorting: false,
     cell: (info) => {
       const wt = info.getValue() as string;
       return wt ? <Chip label={wt} size="small" variant="outlined" /> : null;
@@ -75,7 +75,7 @@ const groupedColumns: ColumnDef<GroupedItem>[] = [
   },
   {
     accessorKey: "itemName",
-    header: "Item Name",
+    header: "物品名称",
     cell: (info) => (
       <Typography variant="body2" fontWeight={500}>
         {info.getValue() as string}
@@ -83,40 +83,43 @@ const groupedColumns: ColumnDef<GroupedItem>[] = [
     ),
   },
   {
-    accessorKey: "count",
-    header: "Count",
+    accessorKey: "totalQuantity",
+    header: "数量",
     meta: { align: "right" },
     cell: (info) => (
       <Typography variant="body2">{(info.getValue() as number).toLocaleString()}</Typography>
     ),
   },
   {
-    id: "statusSummary",
-    header: "Status",
+    accessorKey: "totalBuyPrice",
+    header: "总价",
+    meta: { align: "right" },
+    cell: (info) => formatCNY(info.getValue() as number),
+  },
+  {
+    accessorKey: "avgBuyPrice",
+    header: "均价",
+    meta: { align: "right" },
+    cell: (info) => formatCNY(info.getValue() as number),
+  },
+  {
+    id: "marketPrice",
+    header: "市场价",
+    meta: { align: "right" },
+    cell: ({ row }) => (
+      <Typography variant="body2" color="text.secondary">
+        {row.original.marketPrice != null ? formatCNY(row.original.marketPrice) : "--"}
+      </Typography>
+    ),
+  },
+  {
+    id: "unrealizedPl",
+    header: "未实现盈亏",
+    meta: { align: "right" },
     cell: ({ row }) => {
-      const instances = row.original.instances;
-      const inInv = instances.filter((i) => i.status === "in_inventory").reduce((s, i) => s + (i.quantity ?? 1), 0);
-      const listed = instances.filter((i) => i.status === "listed").reduce((s, i) => s + (i.quantity ?? 1), 0);
-      return (
-        <Box sx={{ display: "flex", gap: 0.5 }}>
-          {inInv > 0 && (
-            <Chip
-              size="small"
-              label={`${inInv} in inv`}
-              color={inventoryStatusColor["in_inventory"] ?? "default"}
-              variant="outlined"
-            />
-          )}
-          {listed > 0 && (
-            <Chip
-              size="small"
-              label={`${listed} listed`}
-              color={inventoryStatusColor["listed"] ?? "default"}
-              variant="outlined"
-            />
-          )}
-        </Box>
-      );
+      if (row.original.unrealizedPl == null) return <Typography variant="body2" color="text.secondary">--</Typography>;
+      const v = row.original.unrealizedPl;
+      return <Typography variant="body2" color={plHexColor(v)}>{formatCNY(v)}</Typography>;
     },
   },
 ];
@@ -125,40 +128,43 @@ export default function InventoryPage() {
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
   const selectedAccountId = useUIStore((s) => s.selectedAccountId);
-  const { data: items = [], isLoading, error, refetch } = useInventory(selectedAccountId);
-  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
+
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [sortBy, setSortBy] = useState("itemName");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const [globalFilter, setGlobalFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
 
-  const grouped = useMemo(() => {
-    const map = new Map<string, model.InventoryItem[]>();
-    for (const item of items) {
-      const name = item.itemName ?? "Unknown";
-      const arr = map.get(name);
-      if (arr) arr.push(item);
-      else map.set(name, [item]);
-    }
-    return Array.from(map, ([itemName, instances]) => ({
-      itemName,
-      weaponType: instances[0]?.weaponType ?? "",
-      count: instances.reduce((sum, i) => sum + (i.quantity ?? 1), 0),
-      instances,
-    })).sort((a, b) => a.itemName.localeCompare(b.itemName));
-  }, [items]);
+  const { data, isLoading, error, refetch } = useInventory(selectedAccountId, {
+    page: page + 1,
+    pageSize,
+    sortBy,
+    sortDir,
+    weaponType: typeFilter,
+  });
+
+  const groups: GroupRowData[] = useMemo(() => data?.groups ?? [], [data?.groups]);
+  const total = data?.total ?? 0;
 
   const typeFilterOptions = useMemo(() => {
     const types = new Set<string>();
-    for (const g of grouped) {
+    for (const g of groups) {
       if (g.weaponType) types.add(g.weaponType);
     }
     return Array.from(types).sort();
-  }, [grouped]);
+  }, [groups]);
 
-  const filteredGrouped = useMemo(() => {
-    if (!typeFilter) return grouped;
-    return grouped.filter((g) => g.weaponType === typeFilter);
-  }, [grouped, typeFilter]);
+  const filteredGroups = useMemo(() => {
+    let result = groups;
+    if (globalFilter) result = result.filter((g) =>
+      g.itemName.toLowerCase().includes(globalFilter.toLowerCase())
+    );
+    return result;
+  }, [groups, globalFilter]);
+
+  const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
 
   const toggle = (name: string) => {
     setExpandedNames((prev) => {
@@ -169,30 +175,21 @@ export default function InventoryPage() {
     });
   };
 
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const table = useReactTable({
-    data: filteredGrouped,
-    columns: groupedColumns,
-    state: { sorting, globalFilter },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: (row, _columnId, filterValue) =>
-      row.original.itemName.toLowerCase().includes((filterValue as string).toLowerCase()),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.itemName,
-  });
+  const handleSort = (sb: string, sd: string) => {
+    setSortBy(sb);
+    setSortDir(sd as "asc" | "desc");
+    setPage(0);
+  };
 
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h4">Inventory</Typography>
+        <Typography variant="h4">持仓</Typography>
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
+              onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
               displayEmpty
               sx={{ bgcolor: "grey.100" }}
             >
@@ -202,16 +199,16 @@ export default function InventoryPage() {
               ))}
             </Select>
           </FormControl>
-          <PageSearchBar value={globalFilter} onChange={setGlobalFilter} placeholder="Filter by item name..." />
+          <PageSearchBar value={globalFilter} onChange={setGlobalFilter} placeholder="搜索物品名称..." />
         </Box>
       </Box>
 
-      {!selectedAccountId && items.length === 0 && !isLoading && (
+      {!selectedAccountId && groups.length === 0 && !isLoading && (
         <Box mt={3}>
           <EmptyState
-            title="No account selected"
-            description="Select or add an account to view inventory."
-            action={{ label: "Go to Accounts", onClick: () => { void navigate("/accounts"); } }}
+            title="未选择账户"
+            description="选择或添加一个账户以查看持仓。"
+            action={{ label: "前往账户管理", onClick: () => { void navigate("/accounts"); } }}
           />
         </Box>
       )}
@@ -227,187 +224,221 @@ export default function InventoryPage() {
       {error && !dismissed && (
         <Box mt={3}>
           <ErrorBanner
-            message={`Failed to load inventory: ${String(error)}`}
+            message={`加载持仓数据失败: ${String(error)}`}
             onRetry={() => { setDismissed(false); void refetch(); }}
             onDismiss={() => setDismissed(true)}
           />
         </Box>
       )}
 
-      {!isLoading && !error && items.length === 0 && selectedAccountId && (
+      {!isLoading && !error && selectedAccountId && groups.length === 0 && (
         <Box mt={3}>
           <EmptyState
-            title="No inventory items"
-            description="Sync your account to populate inventory data."
+            title="暂无持仓物品"
+            description="同步账户数据后将在此显示持仓。"
           />
         </Box>
       )}
 
-      {!isLoading && !error && items.length > 0 && filteredGrouped.length === 0 && (
+      {!isLoading && !error && groups.length > 0 && filteredGroups.length === 0 && (
         <Box mt={3}>
           <EmptyState
-            title="No matching items"
-            description="Try changing the type filter or search query."
+            title="无匹配物品"
+            description="请尝试更改类型筛选或搜索条件。"
           />
         </Box>
       )}
 
-      {!isLoading && !error && filteredGrouped.length > 0 && (
+      {!isLoading && !error && filteredGroups.length > 0 && (
         <Box mt={3}>
-          <TableContainer component={Paper}>
-            <Table size="small">
-              <TableHead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      const sorted = header.column.getIsSorted();
+          <Paper>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    {groupedColumns.map((col) => {
+                      const headerId = (col as { id?: string }).id ?? (col as { accessorKey?: string }).accessorKey ?? "";
+                      const canSort = col.enableSorting !== false;
+                      const isSorted = canSort && sortBy === headerId ? sortDir : false;
                       return (
                         <TableCell
-                          key={header.id}
-                          align={header.column.columnDef.meta?.align}
-                          sortDirection={sorted || false}
+                          key={headerId}
+                          align={col.meta?.align}
+                          sortDirection={isSorted || false}
                           sx={{ py: 1 }}
                         >
                           {canSort ? (
                             <TableSortLabel
-                              active={!!sorted}
-                              direction={sorted || undefined}
+                              active={!!isSorted}
+                              direction={isSorted === "desc" ? "desc" : "asc"}
                               onClick={() => {
-                                if (sorted === "desc") {
-                                  header.column.clearSorting();
-                                } else {
-                                  header.column.toggleSorting(sorted === "asc");
-                                }
+                                if (isSorted === "asc") handleSort(headerId, "desc");
+                                else if (isSorted === "desc") handleSort("itemName", "asc");
+                                else handleSort(headerId, "asc");
                               }}
                             >
-                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {typeof col.header === "string" ? col.header : headerId}
                             </TableSortLabel>
                           ) : (
-                            flexRender(header.column.columnDef.header, header.getContext())
+                            typeof col.header === "string" ? col.header : headerId
                           )}
                         </TableCell>
                       );
                     })}
                   </TableRow>
-                ))}
-              </TableHead>
-              <TableBody>
-                {table.getRowModel().rows.map((groupRow) => {
-                  const expanded = expandedNames.has(groupRow.original.itemName);
-                  return (
-                    <React.Fragment key={groupRow.id}>
-                      <TableRow
-                        hover
-                        sx={{ bgcolor: "grey.50", cursor: "pointer" }}
-                        onClick={() => toggle(groupRow.original.itemName)}
-                      >
-                        {groupRow.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} align={cell.column.columnDef.meta?.align} sx={{ py: 1 }}>
-                            {flexRender(cell.column.columnDef.cell, {
-                              ...cell.getContext(),
-                              row: {
-                                ...groupRow,
-                                getIsExpanded: () => expanded,
-                              },
-                            })}
+                </TableHead>
+                <TableBody>
+                  {filteredGroups.map((group) => {
+                    const expanded = expandedNames.has(group.itemName);
+                    return (
+                      <React.Fragment key={group.itemName}>
+                        <TableRow
+                          hover
+                          sx={{ bgcolor: "grey.50", cursor: "pointer" }}
+                          onClick={() => toggle(group.itemName)}
+                        >
+                          <TableCell sx={{ py: 1 }}>
+                            <IconButton size="small">
+                              {expanded ? (
+                                <KeyboardArrowDownIcon fontSize="small" />
+                              ) : (
+                                <KeyboardArrowRightIcon fontSize="small" />
+                              )}
+                            </IconButton>
                           </TableCell>
-                        ))}
-                      </TableRow>
-                      <TableRow sx={{ "& td": { border: 0 } }}>
-                        <TableCell colSpan={groupedColumns.length} sx={{ p: 0 }}>
-                          <Collapse in={expanded}>
-                            <Box sx={{ mx: 2, my: 1 }}>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ fontSize: "0.75rem" }}>Item Name</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }}>Exterior</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }} align="right">Wear</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }} align="right">Qty</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }}>Status</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }} align="right">Buy Price</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }}>Buy Date</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }}>Platform</TableCell>
-                                    <TableCell sx={{ fontSize: "0.75rem" }} align="right">Listed Price</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {groupRow.original.instances.map((inst) => (
-                                    <TableRow
-                                      key={`${inst.accountId}-${inst.assetId}`}
-                                      hover
-                                      sx={{ cursor: "pointer" }}
-                                      onClick={() => {
-                                        void navigate(`/inventory/${inst.accountId}/${inst.assetId}`);
-                                      }}
-                                    >
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2">{inst.itemName ?? "--"}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2" color="text.secondary">
-                                          {inst.exterior || "--"}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2" color="text.secondary">
-                                          {inst.paintWear != null ? inst.paintWear.toFixed(8) : "--"}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2">
-                                          {(inst.quantity ?? 1).toLocaleString()}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Chip
-                                          label={inventoryStatusLabel[inst.status] ?? inst.status}
-                                          size="small"
-                                          color={inventoryStatusColor[inst.status] ?? "default"}
-                                          variant="outlined"
-                                        />
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2">
-                                          {inst.buyTrade ? formatCNY(inst.buyTrade.unitPrice) : "--"}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2" color="text.secondary">
-                                          {inst.buyTrade
-                                            ? new Date(inst.buyTrade.tradeAt).toLocaleDateString()
-                                            : "--"}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                        <Typography variant="body2" color="text.secondary">
-                                          {inst.buyTrade
-                                            ? (platformLabel[inst.buyTrade.source] ?? inst.buyTrade.source)
-                                            : "--"}
-                                        </Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2">
-                                          {inst.status === "listed" && inst.listedPrice != null
-                                            ? formatCNY(inst.listedPrice)
-                                            : "--"}
-                                        </Typography>
-                                      </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            {group.weaponType ? (
+                              <Chip label={group.weaponType} size="small" variant="outlined" />
+                            ) : null}
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" fontWeight={500}>{group.itemName}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2">{group.totalQuantity.toLocaleString()}</Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">{formatCNY(group.totalBuyPrice)}</TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">{formatCNY(group.avgBuyPrice)}</TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2" color="text.secondary">
+                              {group.marketPrice != null ? formatCNY(group.marketPrice) : "--"}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            {group.unrealizedPl != null ? (
+                              <Typography variant="body2" color={plHexColor(group.unrealizedPl)}>{formatCNY(group.unrealizedPl)}</Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">--</Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow sx={{ "& td": { border: 0 } }}>
+                          <TableCell colSpan={groupedColumns.length} sx={{ p: 0 }}>
+                            <Collapse in={expanded}>
+                              <Box sx={{ mx: 2, my: 1 }}>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell sx={{ fontSize: "0.75rem" }}>物品名称</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }}>磨损</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }} align="right">磨损值</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }} align="right">数量</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }}>状态</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }} align="right">买入价</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }}>买入日期</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }}>平台</TableCell>
+                                      <TableCell sx={{ fontSize: "0.75rem" }} align="right">上架价</TableCell>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                                  </TableHead>
+                                  <TableBody>
+                                    {group.instances.map((inst) => (
+                                      <TableRow
+                                        key={`${inst.accountId}-${inst.assetId}`}
+                                        hover
+                                        sx={{ cursor: "pointer" }}
+                                        onClick={() => {
+                                          void navigate(`/inventory/${inst.accountId}/${inst.assetId}`);
+                                        }}
+                                      >
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2">{inst.itemName ?? "--"}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" color="text.secondary">
+                                            {inst.exterior || "--"}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" color="text.secondary">
+                                            {inst.paintWear != null ? inst.paintWear.toFixed(8) : "--"}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2">
+                                            {(inst.quantity ?? 1).toLocaleString()}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Chip
+                                            label={inventoryStatusLabel[inst.status] ?? inst.status}
+                                            size="small"
+                                            color={inventoryStatusColor[inst.status] ?? "default"}
+                                            variant="outlined"
+                                          />
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2">
+                                            {inst.buyTrade ? formatCNY(inst.buyTrade.unitPrice) : "--"}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" color="text.secondary">
+                                            {inst.buyTrade
+                                              ? new Date(inst.buyTrade.tradeAt).toLocaleDateString()
+                                              : "--"}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" color="text.secondary">
+                                            {inst.buyTrade
+                                              ? (platformLabel[inst.buyTrade.source] ?? inst.buyTrade.source)
+                                              : "--"}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2">
+                                            {inst.status === "listed" && inst.listedPrice != null
+                                              ? formatCNY(inst.listedPrice)
+                                              : "--"}
+                                          </Typography>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              rowsPerPage={pageSize}
+              onPageChange={(_, p) => setPage(p)}
+              onRowsPerPageChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[20, 50, 100]}
+            />
+          </Paper>
         </Box>
       )}
     </Box>

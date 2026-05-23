@@ -14,6 +14,9 @@ import {
   GetMonthlyBreakdown,
   GetDashboardSummary,
   GetRentalHistory,
+  GetMarketPrices,
+  GetSettings,
+  UpdateSettings,
 } from "../../wailsjs/go/main/App";
 import type { model, trade, pnl, sync, inventory, main } from "../../wailsjs/go/models";
 
@@ -33,6 +36,9 @@ export {
   GetMonthlyBreakdown,
   GetDashboardSummary,
   GetRentalHistory,
+  GetMarketPrices,
+  GetSettings,
+  UpdateSettings,
 };
 
 export type { model, trade, pnl, sync, inventory, main };

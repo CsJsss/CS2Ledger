@@ -206,6 +206,7 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 		Available: available,
 		Purchase:  purchase,
 		Frozen:    frozen,
+		Instant:   0,
 	}, nil
 }
 

@@ -9,3 +9,6 @@ log:
 #   dsn: "file:data.db"
 #   wal_mode: true
 #   busy_timeout: 5000
+
+price_source: buff          # buff | youpin | steam
+price_cache_ttl_min: 30     # 5-1440

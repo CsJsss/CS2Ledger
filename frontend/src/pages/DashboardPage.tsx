@@ -9,7 +9,7 @@ import Box from "@mui/material/Box";
 import ErrorBanner from "../components/ErrorBanner";
 import EmptyState from "../components/EmptyState";
 import { useDashboard } from "../hooks/useDashboard";
-import { formatCNY } from "../lib/format";
+import { formatCNY, plColor } from "../lib/format";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Dashboard</Typography>
+      <Typography variant="h4" gutterBottom>仪表盘</Typography>
 
       {isLoading && (
         <Grid container spacing={2} mt={1}>
@@ -38,7 +38,7 @@ export default function DashboardPage() {
       {error && !dismissed && (
         <Box mt={3}>
           <ErrorBanner
-            message={`Failed to load dashboard: ${String(error)}`}
+            message={`加载仪表盘失败: ${String(error)}`}
             onRetry={() => { setDismissed(false); void refetch(); }}
             onDismiss={() => setDismissed(true)}
           />
@@ -48,19 +48,55 @@ export default function DashboardPage() {
       {!isLoading && !error && data && data.inventoryCount === 0 && data.completedTrades === 0 && (
         <Box mt={3}>
           <EmptyState
-            title="No data yet"
-            description="Add an account and sync to see your dashboard."
-            action={{ label: "Go to Accounts", onClick: () => { void navigate("/accounts"); } }}
+            title="暂无数据"
+            description="添加账户并同步以查看仪表盘。"
+            action={{ label: "前往账户管理", onClick: () => { void navigate("/accounts"); } }}
           />
         </Box>
       )}
 
-      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0) && (
+      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0 && data.totalAvailableBalance === 0 && data.totalFrozenBalance === 0 && data.totalInstantBalance === 0 && data.totalPurchaseBalance === 0) && (
         <Grid container spacing={2} mt={1}>
           <Grid item xs={3}>
             <Card>
               <CardContent>
-                <Typography variant="body2" color="text.secondary">Net Worth</Typography>
+                <Typography variant="body2" color="text.secondary">钱包余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalAvailableBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">冻结余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalFrozenBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">秒到账余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalInstantBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">求购余额</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.totalPurchaseBalance)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0 && data.totalAvailableBalance === 0 && data.totalFrozenBalance === 0 && data.totalInstantBalance === 0 && data.totalPurchaseBalance === 0) && (
+        <Grid container spacing={2} mt={2}>
+          <Grid item xs={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">净资产</Typography>
                 <Typography variant="h5" mt={1}>{formatCNY(data.totalNetWorth)}</Typography>
               </CardContent>
             </Card>
@@ -68,7 +104,7 @@ export default function DashboardPage() {
           <Grid item xs={3}>
             <Card>
               <CardContent>
-                <Typography variant="body2" color="text.secondary">Inventory Items</Typography>
+                <Typography variant="body2" color="text.secondary">持仓物品</Typography>
                 <Typography variant="h5" mt={1}>{data.inventoryCount}</Typography>
               </CardContent>
             </Card>
@@ -76,7 +112,7 @@ export default function DashboardPage() {
           <Grid item xs={3}>
             <Card>
               <CardContent>
-                <Typography variant="body2" color="text.secondary">Completed Trades</Typography>
+                <Typography variant="body2" color="text.secondary">已完成交易</Typography>
                 <Typography variant="h5" mt={1}>{data.completedTrades}</Typography>
               </CardContent>
             </Card>
@@ -84,8 +120,38 @@ export default function DashboardPage() {
           <Grid item xs={3}>
             <Card>
               <CardContent>
-                <Typography variant="body2" color="text.secondary">Rental Income</Typography>
+                <Typography variant="body2" color="text.secondary">租赁收入</Typography>
                 <Typography variant="h5" mt={1}>{formatCNY(data.totalRentalIncome)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+      {!isLoading && !error && data && !(data.inventoryCount === 0 && data.completedTrades === 0 && data.totalAvailableBalance === 0 && data.totalFrozenBalance === 0 && data.totalInstantBalance === 0 && data.totalPurchaseBalance === 0) && (
+        <Grid container spacing={2} mt={2}>
+          <Grid item xs={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">持仓成本</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.inventoryCost)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">持仓市值</Typography>
+                <Typography variant="h5" mt={1}>{formatCNY(data.inventoryMarketValue)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2" color="text.secondary">未实现盈亏</Typography>
+                <Typography variant="h5" mt={1} color={plColor(data.inventoryMarketValue - data.inventoryCost)}>
+                  {formatCNY(data.inventoryMarketValue - data.inventoryCost)}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
