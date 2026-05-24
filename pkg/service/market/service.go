@@ -96,7 +96,7 @@ func (s *MarketService) GetPrices(names []string) ([]platform.PriceInfo, error) 
 // GetAllPrices returns all cached market prices from SQLite. Does NOT call external API.
 func (s *MarketService) GetAllPrices() ([]platform.PriceInfo, error) {
 	rows, err := s.db.Table("market_prices").
-		Select("market_hash_name", "buff_price", "buff_volume", "youpin_price", "youpin_volume", "steam_price", "steam_volume").
+		Select("market_hash_name", "buff_price", "buff_volume", "youpin_price", "youpin_volume", "steam_price", "steam_volume", "updated_at").
 		Rows()
 	if err != nil {
 		s.log.Warn("market: GetAllPrices query failed", "err", err)
