@@ -37,6 +37,8 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import PnlSummaryCards from '../components/PnlSummaryCards';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PageSearchBar from '../components/PageSearchBar';
 import { useCompletedTrades } from '../hooks/useCompletedTrades';
 import { useCompletedTradesSummary } from '../hooks/useCompletedTradesSummary';
@@ -224,19 +226,31 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
     accessorKey: 'count',
     header: 'Trades',
     meta: { align: 'right' },
-    cell: (info) => <Typography variant="body2">{String(info.getValue())}</Typography>,
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {String(info.getValue())}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalBuyPrice',
     header: 'Total Buy',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalSellPrice',
     header: 'Total Sell',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalGrossPl',
@@ -245,7 +259,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
     cell: (info) => {
       const v = info.getValue() as number;
       return (
-        <Typography variant="body2" color={plHexColor(v)}>
+        <Typography variant="body2" color={plHexColor(v)} className="mono-num">
           {formatCNY(v)}
         </Typography>
       );
@@ -255,7 +269,11 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
     accessorKey: 'totalFee',
     header: 'Fees',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalNetPl',
@@ -264,7 +282,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
     cell: (info) => {
       const v = info.getValue() as number;
       return (
-        <Typography variant="body2" fontWeight={600} color={plHexColor(v)}>
+        <Typography variant="body2" fontWeight={600} color={plHexColor(v)} className="mono-num">
           {formatCNY(v)}
         </Typography>
       );
@@ -301,19 +319,31 @@ const unmatchedGroupedColumns: ColumnDef<GroupedUnmatchedSell>[] = [
     accessorKey: 'count',
     header: 'Sells',
     meta: { align: 'right' },
-    cell: (info) => <Typography variant="body2">{String(info.getValue())}</Typography>,
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {String(info.getValue())}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalSellPrice',
     header: 'Total Sell',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'totalFee',
     header: 'Fees',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
 ];
 
@@ -417,7 +447,11 @@ function CompletedTradesContent({
 
       {groups.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="暂无已完成交易" description="同步账户数据后将在此显示交易和盈亏。" />
+          <EmptyState
+            icon={<ReceiptIcon sx={{ fontSize: 48 }} />}
+            title="暂无已完成交易"
+            description="同步账户数据后将在此显示交易和盈亏。"
+          />
         </Box>
       )}
 
@@ -462,7 +496,7 @@ function CompletedTradesContent({
                       <React.Fragment key={group.itemName}>
                         <TableRow
                           hover
-                          sx={{ bgcolor: 'grey.50', cursor: 'pointer' }}
+                          sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
                           onClick={() => toggle(group.itemName)}
                         >
                           <TableCell sx={{ py: 1 }}>
@@ -480,27 +514,40 @@ function CompletedTradesContent({
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            <Typography variant="body2">{String(group.count)}</Typography>
+                            <Typography variant="body2" className="mono-num">
+                              {String(group.count)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            {formatCNY(group.totalBuyPrice)}
+                            <Typography variant="body2" className="mono-num">
+                              {formatCNY(group.totalBuyPrice)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            {formatCNY(group.totalSellPrice)}
+                            <Typography variant="body2" className="mono-num">
+                              {formatCNY(group.totalSellPrice)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            <Typography variant="body2" color={plHexColor(group.totalGrossPl)}>
+                            <Typography
+                              variant="body2"
+                              color={plHexColor(group.totalGrossPl)}
+                              className="mono-num"
+                            >
                               {formatCNY(group.totalGrossPl)}
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            {formatCNY(group.totalFee)}
+                            <Typography variant="body2" className="mono-num">
+                              {formatCNY(group.totalFee)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
                             <Typography
                               variant="body2"
                               fontWeight={600}
                               color={plHexColor(group.totalNetPl)}
+                              className="mono-num"
                             >
                               {formatCNY(group.totalNetPl)}
                             </Typography>
@@ -594,33 +641,50 @@ function CompletedTradesContent({
                                           </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          {formatCNY(t.buyTrade.unitPrice)}
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(t.buyTrade.unitPrice)}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          {formatCNY(t.sellTrade.unitPrice)}
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(t.sellTrade.unitPrice)}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2">{t.quantity}</Typography>
+                                          <Typography variant="body2" className="mono-num">
+                                            {t.quantity}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          {formatCNY(t.buyTrade.totalPrice)}
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(t.buyTrade.totalPrice)}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          {formatCNY(t.sellTrade.totalPrice)}
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(t.sellTrade.totalPrice)}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2" color={plHexColor(t.grossPl)}>
+                                          <Typography
+                                            variant="body2"
+                                            color={plHexColor(t.grossPl)}
+                                            className="mono-num"
+                                          >
                                             {formatCNY(t.grossPl)}
                                           </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          {formatCNY(t.totalFee)}
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(t.totalFee)}
+                                          </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
                                           <Typography
                                             variant="body2"
                                             fontWeight={600}
                                             color={plHexColor(t.netPl)}
+                                            className="mono-num"
                                           >
                                             {formatCNY(t.netPl)}
                                           </Typography>
@@ -816,7 +880,11 @@ function UnmatchedSellsContent({
 
       {sells.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="无未匹配卖出" description="所有卖出订单均已匹配到买入订单。" />
+          <EmptyState
+            icon={<CheckCircleIcon sx={{ fontSize: 48 }} />}
+            title="无未匹配卖出"
+            description="所有卖出订单均已匹配到买入订单。"
+          />
         </Box>
       )}
 
@@ -864,7 +932,10 @@ function UnmatchedSellsContent({
                     <React.Fragment key={groupRow.id}>
                       <TableRow
                         hover
-                        sx={{ bgcolor: 'grey.50', cursor: 'pointer' }}
+                        sx={{
+                          bgcolor: (t) => (t.palette.mode === 'dark' ? '#111114' : '#f8fafc'),
+                          cursor: 'pointer',
+                        }}
                         onClick={() => toggle(groupRow.original.itemName)}
                       >
                         {groupRow.getVisibleCells().map((cell) => (
@@ -932,16 +1003,24 @@ function UnmatchedSellsContent({
                                         </Typography>
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }} align="right">
-                                        {formatCNY(s.unitPrice)}
+                                        <Typography variant="body2" className="mono-num">
+                                          {formatCNY(s.unitPrice)}
+                                        </Typography>
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }} align="right">
-                                        <Typography variant="body2">{s.quantity}</Typography>
+                                        <Typography variant="body2" className="mono-num">
+                                          {s.quantity}
+                                        </Typography>
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }} align="right">
-                                        {formatCNY(s.totalPrice)}
+                                        <Typography variant="body2" className="mono-num">
+                                          {formatCNY(s.totalPrice)}
+                                        </Typography>
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }} align="right">
-                                        {formatCNY(s.fee)}
+                                        <Typography variant="body2" className="mono-num">
+                                          {formatCNY(s.fee)}
+                                        </Typography>
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }} align="right">
                                         <Typography variant="body2" color="text.secondary">

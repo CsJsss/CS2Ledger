@@ -28,7 +28,7 @@ export default function PageSearchBar({
       }}
       sx={{
         width: 260,
-        '& .MuiOutlinedInput-root': { bgcolor: 'grey.100' },
+        '& .MuiOutlinedInput-root': { bgcolor: 'background.paper' },
       }}
     />
   );

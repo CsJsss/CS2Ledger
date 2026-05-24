@@ -1,9 +1,10 @@
+import { type ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 
 interface EmptyStateProps {
-  icon?: string;
+  icon?: ReactNode;
   title: string;
   description?: string;
   action?: { label: string; onClick: () => void };
@@ -20,7 +21,7 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
       textAlign="center"
     >
       {icon && (
-        <Box fontSize={48} mb={2}>
+        <Box mb={2} sx={{ color: 'text.disabled' }}>
           {icon}
         </Box>
       )}
@@ -28,12 +29,12 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
         {title}
       </Typography>
       {description && (
-        <Typography variant="body2" color="text.secondary" mt={1} maxWidth={400}>
+        <Typography variant="body2" color="text.disabled" mt={1} maxWidth={400}>
           {description}
         </Typography>
       )}
       {action && (
-        <Button variant="contained" onClick={action.onClick} sx={{ mt: 2 }}>
+        <Button variant="outlined" onClick={action.onClick} sx={{ mt: 3 }}>
           {action.label}
         </Button>
       )}

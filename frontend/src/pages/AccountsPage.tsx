@@ -6,7 +6,7 @@ import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
-import Dialog from '../components/Dialog';
+import AppDialog from '../components/Dialog';
 import AddAccountDialog from '../components/AddAccountDialog';
 import SortableTable from '../components/SortableTable';
 import PageSearchBar from '../components/PageSearchBar';
@@ -117,12 +117,18 @@ export default function AccountsPage() {
         return (
           <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
             {acc.platform === PLATFORM_CSQAQ ? (
-              <Button size="small" disabled title="行情数据自动获取，无需手动同步">
+              <Button
+                size="small"
+                variant="outlined"
+                disabled
+                title="行情数据自动获取，无需手动同步"
+              >
                 无需同步
               </Button>
             ) : (
               <Button
                 size="small"
+                variant="outlined"
                 onClick={() => {
                   setSyncDialogId(acc.ID);
                 }}
@@ -133,13 +139,19 @@ export default function AccountsPage() {
             )}
             <Button
               size="small"
+              variant="outlined"
               onClick={() =>
                 setEditingAccount({ ID: acc.ID, name: acc.name, platform: acc.platform })
               }
             >
               编辑
             </Button>
-            <Button size="small" color="error" onClick={() => setDeletingId(acc.ID)}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              onClick={() => setDeletingId(acc.ID)}
+            >
               删除
             </Button>
           </Box>
@@ -248,7 +260,7 @@ export default function AccountsPage() {
         />
       )}
 
-      <Dialog
+      <AppDialog
         open={deletingId !== null}
         onClose={() => setDeletingId(null)}
         title="删除账户"
@@ -272,9 +284,9 @@ export default function AccountsPage() {
         <Typography variant="body2" color="text.secondary">
           删除此账户及其所有相关数据？此操作不可撤销。
         </Typography>
-      </Dialog>
+      </AppDialog>
 
-      <Dialog
+      <AppDialog
         open={syncDialogId !== null}
         onClose={() => setSyncDialogId(null)}
         title="同步账户"
@@ -297,7 +309,7 @@ export default function AccountsPage() {
         }
       >
         从上次同步点同步账户数据。
-      </Dialog>
+      </AppDialog>
     </Box>
   );
 }

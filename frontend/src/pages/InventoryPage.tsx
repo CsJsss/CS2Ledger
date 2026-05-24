@@ -19,6 +19,9 @@ import Typography from '@mui/material/Typography';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import PageSearchBar from '../components/PageSearchBar';
+import SearchOffIcon from '@mui/icons-material/SearchOff';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useInventory } from '../hooks/useInventory';
 import { useUIStore } from '../store/uiStore';
 import { formatCNY, plHexColor } from '../lib/format';
@@ -94,27 +97,37 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
     header: '数量',
     meta: { align: 'right' },
     cell: (info) => (
-      <Typography variant="body2">{(info.getValue() as number).toLocaleString()}</Typography>
+      <Typography variant="body2" className="mono-num">
+        {(info.getValue() as number).toLocaleString()}
+      </Typography>
     ),
   },
   {
     accessorKey: 'totalBuyPrice',
     header: '总价',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     accessorKey: 'avgBuyPrice',
     header: '均价',
     meta: { align: 'right' },
-    cell: (info) => formatCNY(info.getValue() as number),
+    cell: (info) => (
+      <Typography variant="body2" className="mono-num">
+        {formatCNY(info.getValue() as number)}
+      </Typography>
+    ),
   },
   {
     id: 'marketPrice',
     header: '市场价',
     meta: { align: 'right' },
     cell: ({ row }) => (
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" className="mono-num">
         {row.original.marketPrice != null ? formatCNY(row.original.marketPrice) : '--'}
       </Typography>
     ),
@@ -126,13 +139,13 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
     cell: ({ row }) => {
       if (row.original.unrealizedPl == null)
         return (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" className="mono-num">
             --
           </Typography>
         );
       const v = row.original.unrealizedPl;
       return (
-        <Typography variant="body2" color={plHexColor(v)}>
+        <Typography variant="body2" color={plHexColor(v)} className="mono-num">
           {formatCNY(v)}
         </Typography>
       );
@@ -209,7 +222,7 @@ export default function InventoryPage() {
                 setPage(0);
               }}
               displayEmpty
-              sx={{ bgcolor: 'grey.100' }}
+              sx={{ bgcolor: 'background.paper' }}
             >
               <MenuItem value="">全部类型</MenuItem>
               {typeFilterOptions.map((t) => (
@@ -230,6 +243,7 @@ export default function InventoryPage() {
       {!selectedAccountId && groups.length === 0 && !isLoading && (
         <Box mt={3}>
           <EmptyState
+            icon={<AccountBalanceIcon sx={{ fontSize: 48 }} />}
             title="未选择账户"
             description="选择或添加一个账户以查看持仓。"
             action={{
@@ -265,13 +279,21 @@ export default function InventoryPage() {
 
       {!isLoading && !error && selectedAccountId && groups.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="暂无持仓物品" description="同步账户数据后将在此显示持仓。" />
+          <EmptyState
+            icon={<InventoryIcon sx={{ fontSize: 48 }} />}
+            title="暂无持仓物品"
+            description="同步账户数据后将在此显示持仓。"
+          />
         </Box>
       )}
 
       {!isLoading && !error && groups.length > 0 && filteredGroups.length === 0 && (
         <Box mt={3}>
-          <EmptyState title="无匹配物品" description="请尝试更改类型筛选或搜索条件。" />
+          <EmptyState
+            icon={<SearchOffIcon sx={{ fontSize: 48 }} />}
+            title="无匹配物品"
+            description="请尝试更改类型筛选或搜索条件。"
+          />
         </Box>
       )}
 
@@ -320,13 +342,14 @@ export default function InventoryPage() {
                 </TableHead>
                 <TableBody>
                   {filteredGroups.map((group) => {
-                    const expanded = expandedNames.has(group.itemName);
+                    const groupKey = `${group.itemName}|${group.exterior}`;
+                    const expanded = expandedNames.has(groupKey);
                     return (
-                      <React.Fragment key={group.itemName}>
+                      <React.Fragment key={groupKey}>
                         <TableRow
                           hover
-                          sx={{ bgcolor: 'grey.50', cursor: 'pointer' }}
-                          onClick={() => toggle(group.itemName)}
+                          sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
+                          onClick={() => toggle(groupKey)}
                         >
                           <TableCell sx={{ py: 1 }}>
                             <IconButton size="small">
@@ -366,28 +389,40 @@ export default function InventoryPage() {
                             </Box>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            <Typography variant="body2">
+                            <Typography variant="body2" className="mono-num">
                               {group.totalQuantity.toLocaleString()}
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            {formatCNY(group.totalBuyPrice)}
+                            <Typography variant="body2" className="mono-num">
+                              {formatCNY(group.totalBuyPrice)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            {formatCNY(group.avgBuyPrice)}
+                            <Typography variant="body2" className="mono-num">
+                              {formatCNY(group.avgBuyPrice)}
+                            </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" color="text.secondary" className="mono-num">
                               {group.marketPrice != null ? formatCNY(group.marketPrice) : '--'}
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
                             {group.unrealizedPl != null ? (
-                              <Typography variant="body2" color={plHexColor(group.unrealizedPl)}>
+                              <Typography
+                                variant="body2"
+                                color={plHexColor(group.unrealizedPl)}
+                                className="mono-num"
+                              >
                                 {formatCNY(group.unrealizedPl)}
                               </Typography>
                             ) : (
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                className="mono-num"
+                              >
                                 --
                               </Typography>
                             )}
@@ -449,7 +484,7 @@ export default function InventoryPage() {
                                           </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2">
+                                          <Typography variant="body2" className="mono-num">
                                             {(inst.quantity ?? 1).toLocaleString()}
                                           </Typography>
                                         </TableCell>
@@ -462,7 +497,7 @@ export default function InventoryPage() {
                                           />
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2">
+                                          <Typography variant="body2" className="mono-num">
                                             {inst.buyTrade
                                               ? formatCNY(inst.buyTrade.unitPrice)
                                               : '--'}
@@ -484,7 +519,7 @@ export default function InventoryPage() {
                                           </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2">
+                                          <Typography variant="body2" className="mono-num">
                                             {inst.status === 'listed' && inst.listedPrice != null
                                               ? formatCNY(inst.listedPrice)
                                               : '--'}

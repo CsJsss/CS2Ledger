@@ -33,9 +33,9 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-const POS_COLOR = '#2e7d32';
-const NEG_COLOR = '#c62828';
-const LINE_COLOR = '#1565c0';
+const POS_COLOR = '#22c55e';
+const NEG_COLOR = '#ef4444';
+const LINE_COLOR = '#f97316';
 
 export default function PnLPage() {
   const selectedAccountId = useUIStore((s) => s.selectedAccountId);
@@ -80,21 +80,22 @@ export default function PnLPage() {
     const barValues = values.map((v) => v / 100);
 
     return {
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(255,255,255,0.96)',
-        borderColor: '#e0e0e0',
+        backgroundColor: '#18181b',
+        borderColor: 'rgba(255,255,255,0.12)',
         borderWidth: 1,
-        textStyle: { color: '#333', fontSize: 13 },
+        textStyle: { color: '#fafafa', fontSize: 13 },
         axisPointer: {
           type: 'cross',
-          crossStyle: { color: '#bbb' },
-          lineStyle: { color: '#bbb', type: 'dashed' },
+          crossStyle: { color: '#52525b' },
+          lineStyle: { color: '#52525b', type: 'dashed' },
         },
       },
       legend: {
         bottom: 8,
-        textStyle: { fontSize: 12, color: '#666' },
+        textStyle: { fontSize: 12, color: '#a1a1aa' },
         itemWidth: 14,
         itemHeight: 10,
       },
@@ -107,16 +108,16 @@ export default function PnLPage() {
       xAxis: {
         type: 'category',
         data: months,
-        axisLine: { lineStyle: { color: '#e0e0e0' } },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
         axisTick: { show: false },
-        axisLabel: { color: '#888', fontSize: 11 },
+        axisLabel: { color: '#a1a1aa', fontSize: 11 },
       },
       yAxis: {
         type: 'value',
-        splitLine: { lineStyle: { color: '#f0f0f0' } },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
         axisLabel: {
           fontSize: 11,
-          color: '#888',
+          color: '#a1a1aa',
           formatter: (v: number) => {
             if (Math.abs(v) >= 10000) return `¥${(v / 10000).toFixed(1)}w`;
             return `¥${v.toFixed(0)}`;
@@ -146,8 +147,8 @@ export default function PnLPage() {
           itemStyle: { color: LINE_COLOR },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(21,101,192,0.15)' },
-              { offset: 1, color: 'rgba(21,101,192,0.02)' },
+              { offset: 0, color: 'rgba(249,115,22,0.15)' },
+              { offset: 1, color: 'rgba(249,115,22,0.02)' },
             ]),
           },
         },
@@ -158,10 +159,10 @@ export default function PnLPage() {
           height: 20,
           bottom: 4,
           borderColor: 'transparent',
-          backgroundColor: '#f5f5f5',
-          fillerColor: 'rgba(21,101,192,0.1)',
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          fillerColor: 'rgba(249,115,22,0.1)',
           handleStyle: { color: LINE_COLOR, borderColor: LINE_COLOR },
-          textStyle: { fontSize: 10, color: '#999' },
+          textStyle: { fontSize: 10, color: '#a1a1aa' },
         },
         { type: 'inside' },
       ],

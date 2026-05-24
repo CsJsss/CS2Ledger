@@ -12,6 +12,7 @@ import Grid from '@mui/material/Grid';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import SortableTable from '../components/SortableTable';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useItemDetail } from '../hooks/useItemDetail';
 import { formatCNY } from '../lib/format';
 import IconButton from '@mui/material/IconButton';
@@ -87,7 +88,11 @@ export default function InventoryDetailPage() {
       )}
 
       {!isLoading && !error && !detail && (
-        <EmptyState title="Item not found" description="This item may have been sold or removed." />
+        <EmptyState
+          icon={<ErrorOutlineIcon sx={{ fontSize: 48 }} />}
+          title="Item not found"
+          description="This item may have been sold or removed."
+        />
       )}
 
       {!isLoading && !error && detail && (
@@ -145,7 +150,7 @@ export default function InventoryDetailPage() {
               </Typography>
               <Grid container spacing={2} mb={2}>
                 <Grid item xs={4}>
-                  <Card variant="outlined">
+                  <Card>
                     <CardContent sx={{ textAlign: 'center', py: 2 }}>
                       <Typography variant="body2" color="text.secondary">
                         Total Days
@@ -155,7 +160,7 @@ export default function InventoryDetailPage() {
                   </Card>
                 </Grid>
                 <Grid item xs={4}>
-                  <Card variant="outlined">
+                  <Card>
                     <CardContent sx={{ textAlign: 'center', py: 2 }}>
                       <Typography variant="body2" color="text.secondary">
                         Total Income
@@ -167,7 +172,7 @@ export default function InventoryDetailPage() {
                   </Card>
                 </Grid>
                 <Grid item xs={4}>
-                  <Card variant="outlined">
+                  <Card>
                     <CardContent sx={{ textAlign: 'center', py: 2 }}>
                       <Typography variant="body2" color="text.secondary">
                         Rent Count
@@ -185,7 +190,7 @@ export default function InventoryDetailPage() {
               />
             </Box>
           ) : (
-            <Card variant="outlined">
+            <Card>
               <CardContent>
                 <Typography color="text.secondary" textAlign="center">
                   No rental history
