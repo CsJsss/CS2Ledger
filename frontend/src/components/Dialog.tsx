@@ -16,7 +16,7 @@ export default function AppDialog({ open, onClose, title, children, actions }: D
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>{title}</DialogTitle>
-      <DialogContent dividers sx={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      <DialogContent dividers sx={{ borderColor: 'divider' }}>
         {children}
       </DialogContent>
       {actions && <DialogActions>{actions}</DialogActions>}

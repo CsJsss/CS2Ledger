@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTheme } from '@mui/material/styles';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -38,6 +39,8 @@ const NEG_COLOR = '#ef4444';
 const LINE_COLOR = '#f97316';
 
 export default function PnLPage() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const selectedAccountId = useUIStore((s) => s.selectedAccountId);
   const currentYear = new Date().getFullYear();
   const [dismissed, setDismissed] = useState(false);
@@ -83,19 +86,19 @@ export default function PnLPage() {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: '#18181b',
-        borderColor: 'rgba(255,255,255,0.12)',
+        backgroundColor: isDark ? '#18181b' : '#ffffff',
+        borderColor: isDark ? 'rgba(255,255,255,0.12)' : '#e2e8f0',
         borderWidth: 1,
-        textStyle: { color: '#fafafa', fontSize: 13 },
+        textStyle: { color: isDark ? '#fafafa' : '#0f172a', fontSize: 13 },
         axisPointer: {
           type: 'cross',
-          crossStyle: { color: '#52525b' },
-          lineStyle: { color: '#52525b', type: 'dashed' },
+          crossStyle: { color: isDark ? '#52525b' : '#cbd5e1' },
+          lineStyle: { color: isDark ? '#52525b' : '#cbd5e1', type: 'dashed' },
         },
       },
       legend: {
         bottom: 8,
-        textStyle: { fontSize: 12, color: '#a1a1aa' },
+        textStyle: { fontSize: 12, color: isDark ? '#a1a1aa' : '#64748b' },
         itemWidth: 14,
         itemHeight: 10,
       },
@@ -108,16 +111,16 @@ export default function PnLPage() {
       xAxis: {
         type: 'category',
         data: months,
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+        axisLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0' } },
         axisTick: { show: false },
-        axisLabel: { color: '#a1a1aa', fontSize: 11 },
+        axisLabel: { color: isDark ? '#a1a1aa' : '#64748b', fontSize: 11 },
       },
       yAxis: {
         type: 'value',
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' } },
         axisLabel: {
           fontSize: 11,
-          color: '#a1a1aa',
+          color: isDark ? '#a1a1aa' : '#64748b',
           formatter: (v: number) => {
             if (Math.abs(v) >= 10000) return `¥${(v / 10000).toFixed(1)}w`;
             return `¥${v.toFixed(0)}`;
@@ -159,15 +162,15 @@ export default function PnLPage() {
           height: 20,
           bottom: 4,
           borderColor: 'transparent',
-          backgroundColor: 'rgba(255,255,255,0.04)',
+          backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9',
           fillerColor: 'rgba(249,115,22,0.1)',
           handleStyle: { color: LINE_COLOR, borderColor: LINE_COLOR },
-          textStyle: { fontSize: 10, color: '#a1a1aa' },
+          textStyle: { fontSize: 10, color: isDark ? '#a1a1aa' : '#64748b' },
         },
         { type: 'inside' },
       ],
     };
-  }, [monthly]);
+  }, [monthly, isDark]);
 
   return (
     <Box>

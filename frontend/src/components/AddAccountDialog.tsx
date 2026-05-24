@@ -7,7 +7,7 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Box from '@mui/material/Box';
-import Dialog from './Dialog';
+import AppDialog from './Dialog';
 import { PLATFORM_OPTIONS, PLATFORM_CSQAQ } from '../lib/constants';
 
 const RSA_PLATFORMS = new Set(['eco', 'igxe']);
@@ -92,7 +92,7 @@ export default function AddAccountDialog({
   const formId = editMode ? 'edit-account-form' : 'add-account-form';
 
   return (
-    <Dialog
+    <AppDialog
       open={open}
       onClose={handleCancel}
       title={editMode ? '编辑账户' : '添加账户'}
@@ -190,6 +190,6 @@ export default function AddAccountDialog({
           />
         )}
       </Box>
-    </Dialog>
+    </AppDialog>
   );
 }
