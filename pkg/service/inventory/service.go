@@ -37,22 +37,24 @@ var appSortFields = map[string]bool{
 	"avgBuyPrice":   true,
 	"marketPrice":   true,
 	"unrealizedPl":  true,
+	"plPercent":     true,
 }
 
 // InventoryGroup represents a grouped set of inventory items by item name + exterior.
 type InventoryGroup struct {
-	ItemName       string                `json:"itemName"`
-	Exterior       string                `json:"exterior"`
-	CsqaqGoodsID   int                   `json:"csqaqGoodsId,omitempty"`
-	MarketHashName string                `json:"marketHashName"`
-	WeaponType     string                `json:"weaponType"`
-	Count          int                   `json:"count"`
-	TotalQuantity  int64                 `json:"totalQuantity"`
-	TotalBuyPrice  int64                 `json:"totalBuyPrice"`
-	AvgBuyPrice    int64                 `json:"avgBuyPrice"`
-	MarketPrice    *int64                `json:"marketPrice,omitempty"`
-	UnrealizedPl   *int64                `json:"unrealizedPl,omitempty"`
-	Instances      []model.InventoryItem `json:"instances"`
+	ItemName             string                `json:"itemName"`
+	Exterior             string                `json:"exterior"`
+	CsqaqGoodsID         int                   `json:"csqaqGoodsId,omitempty"`
+	MarketHashName       string                `json:"marketHashName"`
+	WeaponType           string                `json:"weaponType"`
+	Count                int                   `json:"count"`
+	TotalQuantity        int64                 `json:"totalQuantity"`
+	TotalBuyPrice        int64                 `json:"totalBuyPrice"`
+	AvgBuyPrice          int64                 `json:"avgBuyPrice"`
+	MarketPrice          *int64                `json:"marketPrice,omitempty"`
+	MarketPriceUpdatedAt *int64                `json:"marketPriceUpdatedAt,omitempty"`
+	UnrealizedPl         *int64                `json:"unrealizedPl,omitempty"`
+	Instances            []model.InventoryItem `json:"instances"`
 }
 
 type PaginatedGroups struct {
@@ -184,6 +186,8 @@ func (s *service) enrichWithPrices(groups []InventoryGroup) {
 			mp = int64(info.BuffPrice * 100)
 		}
 		g.MarketPrice = &mp
+		updatedAt := info.UpdatedAt
+		g.MarketPriceUpdatedAt = &updatedAt
 		upl := (mp - g.AvgBuyPrice) * g.TotalQuantity
 		g.UnrealizedPl = &upl
 	}
@@ -274,6 +278,8 @@ func (s *service) sortGroups(groups []InventoryGroup, sortBy, sortDir string) {
 			less = ptrValue(a.MarketPrice) < ptrValue(b.MarketPrice)
 		case "unrealizedPl":
 			less = ptrValue(a.UnrealizedPl) < ptrValue(b.UnrealizedPl)
+		case "plPercent":
+			less = plPercent(a) < plPercent(b)
 		default:
 			less = a.ItemName < b.ItemName
 		}
@@ -331,3 +337,10 @@ var Module = fx.Module("inventory",
 		fx.Annotate(func(s *service) InventoryInterface { return s }, fx.As(new(InventoryInterface))),
 	),
 )
+
+func plPercent(g InventoryGroup) float64 {
+	if g.MarketPrice == nil || g.AvgBuyPrice == 0 {
+		return -1e18
+	}
+	return float64(*g.MarketPrice-g.AvgBuyPrice) / float64(g.AvgBuyPrice)
+}

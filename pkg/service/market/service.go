@@ -109,7 +109,8 @@ func (s *MarketService) GetAllPrices() ([]platform.PriceInfo, error) {
 		var mhn string
 		var buffPrice, youpinPrice, steamPrice float64
 		var buffVol, youpinVol, steamVol int
-		if err := rows.Scan(&mhn, &buffPrice, &buffVol, &youpinPrice, &youpinVol, &steamPrice, &steamVol); err != nil {
+		var updatedAt int64
+		if err := rows.Scan(&mhn, &buffPrice, &buffVol, &youpinPrice, &youpinVol, &steamPrice, &steamVol, &updatedAt); err != nil {
 			continue
 		}
 		all = append(all, platform.PriceInfo{
@@ -120,6 +121,7 @@ func (s *MarketService) GetAllPrices() ([]platform.PriceInfo, error) {
 			YoupinVolume:   youpinVol,
 			SteamPrice:     steamPrice,
 			SteamVolume:    steamVol,
+			UpdatedAt:      updatedAt,
 		})
 	}
 	s.log.Debug("market: GetAllPrices returned", "count", len(all))
@@ -354,8 +356,8 @@ func (s *MarketService) queryDB(names []string) (hits []platform.PriceInfo, miss
 		var mhn string
 		var buffPrice, youpinPrice, steamPrice float64
 		var buffVol, youpinVol, steamVol int
-		var _updatedAt int64
-		if err := rows.Scan(&mhn, &buffPrice, &buffVol, &youpinPrice, &youpinVol, &steamPrice, &steamVol, &_updatedAt); err != nil {
+		var updatedAt int64
+		if err := rows.Scan(&mhn, &buffPrice, &buffVol, &youpinPrice, &youpinVol, &steamPrice, &steamVol, &updatedAt); err != nil {
 			continue
 		}
 		hits = append(hits, platform.PriceInfo{
@@ -366,6 +368,7 @@ func (s *MarketService) queryDB(names []string) (hits []platform.PriceInfo, miss
 			YoupinVolume:   youpinVol,
 			SteamPrice:     steamPrice,
 			SteamVolume:    steamVol,
+			UpdatedAt:      updatedAt,
 		})
 		found[mhn] = true
 	}

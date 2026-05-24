@@ -1,5 +1,8 @@
-import { ReactNode } from 'react';
-import { Dialog as MuiDialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { type ReactNode } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 interface DialogProps {
   open: boolean;
@@ -9,12 +12,14 @@ interface DialogProps {
   actions?: ReactNode;
 }
 
-export default function Dialog({ open, onClose, title, children, actions }: DialogProps) {
+export default function AppDialog({ open, onClose, title, children, actions }: DialogProps) {
   return (
-    <MuiDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>{children}</DialogContent>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontWeight: 600 }}>{title}</DialogTitle>
+      <DialogContent dividers sx={{ borderColor: 'divider' }}>
+        {children}
+      </DialogContent>
       {actions && <DialogActions>{actions}</DialogActions>}
-    </MuiDialog>
+    </Dialog>
   );
 }

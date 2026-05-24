@@ -10,6 +10,7 @@ type PriceInfo struct {
 	YoupinVolume   int     `json:"youpinVolume"`
 	SteamPrice     float64 `json:"steamPrice"`
 	SteamVolume    int     `json:"steamVolume"`
+	UpdatedAt      int64   `json:"updatedAt"`
 }
 
 type PriceProvider interface {

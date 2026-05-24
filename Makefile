@@ -55,7 +55,7 @@ build-dev: ## Build development binary (debug symbols).
 
 .PHONY: build-windows
 build-windows: lint test ## Build Windows production binary.
-	wails build -platform windows/amd64
+	CC=x86_64-w64-mingw32-gcc wails build -platform windows/amd64
 
 .PHONY: build-dev-windows
 build-dev-windows: ## Build Windows development binary.
