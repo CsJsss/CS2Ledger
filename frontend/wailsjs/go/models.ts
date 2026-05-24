@@ -11,6 +11,7 @@ export namespace inventory {
 	    totalBuyPrice: number;
 	    avgBuyPrice: number;
 	    marketPrice?: number;
+	    marketPriceUpdatedAt?: number;
 	    unrealizedPl?: number;
 	    instances: model.InventoryItem[];
 	
@@ -30,6 +31,7 @@ export namespace inventory {
 	        this.totalBuyPrice = source["totalBuyPrice"];
 	        this.avgBuyPrice = source["avgBuyPrice"];
 	        this.marketPrice = source["marketPrice"];
+	        this.marketPriceUpdatedAt = source["marketPriceUpdatedAt"];
 	        this.unrealizedPl = source["unrealizedPl"];
 	        this.instances = this.convertValues(source["instances"], model.InventoryItem);
 	    }
@@ -579,6 +581,7 @@ export namespace platform {
 	    youpinVolume: number;
 	    steamPrice: number;
 	    steamVolume: number;
+	    updatedAt: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new PriceInfo(source);
@@ -593,6 +596,7 @@ export namespace platform {
 	        this.youpinVolume = source["youpinVolume"];
 	        this.steamPrice = source["steamPrice"];
 	        this.steamVolume = source["steamVolume"];
+	        this.updatedAt = source["updatedAt"];
 	    }
 	}
 

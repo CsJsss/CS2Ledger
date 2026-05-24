@@ -54,6 +54,7 @@ interface GroupRowData {
   totalBuyPrice: number;
   avgBuyPrice: number;
   marketPrice?: number;
+  marketPriceUpdatedAt?: number;
   unrealizedPl?: number;
   instances: model.InventoryItem[];
 }
@@ -133,6 +134,20 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
     ),
   },
   {
+    id: 'priceUpdatedAt',
+    header: '行情时间',
+    enableSorting: false,
+    meta: { align: 'right' },
+    cell: ({ row }) => {
+      const ts = row.original.marketPriceUpdatedAt;
+      return (
+        <Typography variant="caption" color="text.disabled">
+          {ts ? new Date(ts * 1000).toLocaleString() : '--'}
+        </Typography>
+      );
+    },
+  },
+  {
     id: 'unrealizedPl',
     header: '未实现盈亏',
     meta: { align: 'right' },
@@ -147,6 +162,27 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
       return (
         <Typography variant="body2" color={plHexColor(v)} className="mono-num">
           {formatCNY(v)}
+        </Typography>
+      );
+    },
+  },
+  {
+    id: 'plPercent',
+    header: '盈亏%',
+    meta: { align: 'right' },
+    cell: ({ row }) => {
+      const { avgBuyPrice, marketPrice } = row.original;
+      if (marketPrice == null || avgBuyPrice === 0)
+        return (
+          <Typography variant="body2" color="text.secondary">
+            --
+          </Typography>
+        );
+      const pct = ((marketPrice - avgBuyPrice) / avgBuyPrice) * 100;
+      return (
+        <Typography variant="body2" color={plHexColor(pct)}>
+          {pct >= 0 ? '+' : ''}
+          {pct.toFixed(1)}%
         </Typography>
       );
     },
@@ -409,6 +445,13 @@ export default function InventoryPage() {
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="caption" color="text.disabled">
+                              {group.marketPriceUpdatedAt
+                                ? new Date(group.marketPriceUpdatedAt * 1000).toLocaleString()
+                                : '--'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
                             {group.unrealizedPl != null ? (
                               <Typography
                                 variant="body2"
@@ -423,6 +466,32 @@ export default function InventoryPage() {
                                 color="text.secondary"
                                 className="mono-num"
                               >
+                                --
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            {group.marketPrice != null && group.avgBuyPrice > 0 ? (
+                              <Typography
+                                variant="body2"
+                                color={plHexColor(
+                                  ((group.marketPrice - group.avgBuyPrice) / group.avgBuyPrice) *
+                                    100,
+                                )}
+                              >
+                                {((group.marketPrice - group.avgBuyPrice) / group.avgBuyPrice) *
+                                  100 >=
+                                0
+                                  ? '+'
+                                  : ''}
+                                {(
+                                  ((group.marketPrice - group.avgBuyPrice) / group.avgBuyPrice) *
+                                  100
+                                ).toFixed(1)}
+                                %
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
                                 --
                               </Typography>
                             )}
