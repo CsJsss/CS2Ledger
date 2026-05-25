@@ -44,7 +44,6 @@ func New(apiToken string, log Logger) *Client {
 		client: httpclient.New(
 			httpclient.WithBaseURL(apiBase),
 			httpclient.WithName("csqaq"),
-			httpclient.WithNoRetry(),
 		),
 		log: log,
 	}
@@ -100,12 +99,30 @@ var exteriorENToCN = map[string]string{
 }
 
 // ResolveGoodsInfo queries csqaq's get_good_id API by item name and matches
-// the result by exterior. Returns the csqaq goods ID and market_hash_name.
-func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior string) (int, string, error) {
-	// Try with full item name first.
-	search := itemName
-	c.log.Debug("csqaq: resolve goods search", "search", search)
-	id, mhn, _ := c.searchGoods(ctx, search, itemName, exterior)
+// the result by exterior. marketHashName (if already known from source data)
+// is used for disambiguation in matchGoods and as a fallback search term.
+func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior, marketHashName string) (int, string, error) {
+	// If we already know the canonical English name, use it directly.
+	// It's the most reliable search term and avoids wasting rate limit
+	// budget on Chinese name searches that often don't match.
+	if marketHashName != "" {
+		c.log.Debug("csqaq: resolve goods search by mhn", "marketHashName", marketHashName)
+		id, mhn, err := c.searchGoods(ctx, marketHashName, itemName, exterior, marketHashName)
+		if err != nil {
+			c.log.Warn("csqaq: mhn search failed", "marketHashName", marketHashName, "err", err)
+		}
+		if id != 0 {
+			c.log.Debug("csqaq: mhn matched", "goodID", id, "mhn", mhn)
+			return id, mhn, nil
+		}
+	}
+
+	// Try with full Chinese item name.
+	c.log.Debug("csqaq: resolve goods search", "search", itemName)
+	id, mhn, err := c.searchGoods(ctx, itemName, itemName, exterior, marketHashName)
+	if err != nil {
+		c.log.Warn("csqaq: search goods failed", "search", itemName, "err", err)
+	}
 	if id != 0 {
 		return id, mhn, nil
 	}
@@ -114,9 +131,12 @@ func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior string
 	if exterior != "" {
 		if idx := strings.LastIndex(itemName, "|"); idx >= 0 {
 			skin := strings.TrimSpace(itemName[idx+1:])
-			search = skin + " (" + exterior + ")"
+			search := skin + " (" + exterior + ")"
 			c.log.Debug("csqaq: fallback search", "search", search)
-			id, mhn, _ = c.searchGoods(ctx, search, itemName, exterior)
+			id, mhn, err = c.searchGoods(ctx, search, itemName, exterior, marketHashName)
+			if err != nil {
+				c.log.Warn("csqaq: fallback search failed", "search", search, "err", err)
+			}
 			if id != 0 {
 				c.log.Debug("csqaq: fallback matched", "goodID", id, "mhn", mhn)
 				return id, mhn, nil
@@ -128,7 +148,7 @@ func (c *Client) ResolveGoodsInfo(ctx context.Context, itemName, exterior string
 	return 0, "", nil
 }
 
-func (c *Client) searchGoods(ctx context.Context, search, itemName, exterior string) (int, string, error) {
+func (c *Client) searchGoods(ctx context.Context, search, itemName, exterior, marketHashName string) (int, string, error) {
 	body, err := json.Marshal(map[string]any{
 		"page_index": 1,
 		"page_size":  20,
@@ -158,7 +178,7 @@ func (c *Client) searchGoods(ctx context.Context, search, itemName, exterior str
 		return 0, "", fmt.Errorf("csqaq: get_good_id api error code=%d msg=%q", ar.Code, ar.Msg)
 	}
 
-	id, mhn := matchGoods(ar.Data.Data, itemName, exterior)
+	id, mhn := matchGoods(ar.Data.Data, itemName, exterior, marketHashName)
 	return id, mhn, nil
 }
 
@@ -170,7 +190,7 @@ func normalizeName(s string) string {
 	return s
 }
 
-func matchGoods(data map[string]goodsInfo, itemName, exterior string) (int, string) {
+func matchGoods(data map[string]goodsInfo, itemName, exterior, marketHashName string) (int, string) {
 	if len(data) == 0 {
 		return 0, ""
 	}
@@ -182,9 +202,21 @@ func matchGoods(data map[string]goodsInfo, itemName, exterior string) (int, stri
 		}
 	}
 
+	// Multiple results — try matching by known market_hash_name first.
+	// This handles cases where platforms use incompatible Chinese translations
+	// for the same skin (e.g. "消音版" vs "消音型"), since v.MarketHashName
+	// is the canonical English name and will match the known value.
+	if marketHashName != "" {
+		for _, v := range data {
+			if normalizeName(v.MarketHashName) == normalizeName(marketHashName) {
+				return v.ID, v.MarketHashName
+			}
+		}
+	}
+
 	normItem := normalizeName(itemName)
 
-	// Multiple results — try to disambiguate by exterior.
+	// Try to disambiguate by exterior in v.Name.
 	if exterior != "" {
 		cnExt := exterior
 		if en, ok := exteriorENToCN[exterior]; ok {
