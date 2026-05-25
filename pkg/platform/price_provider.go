@@ -15,5 +15,5 @@ type PriceInfo struct {
 
 type PriceProvider interface {
 	GetPrices(ctx context.Context, marketHashNames []string) ([]PriceInfo, error)
-	ResolveGoodsInfo(ctx context.Context, itemName, exterior string) (goodID int, marketHashName string, err error)
+	ResolveGoodsInfo(ctx context.Context, itemName, exterior, marketHashName string) (goodID int, resolvedMHN string, err error)
 }

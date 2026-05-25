@@ -280,7 +280,7 @@ func (s *MarketService) resolveMissingGoods(ctx context.Context) {
 			continue
 		}
 
-		goodID, mhn, err := s.provider.ResolveGoodsInfo(ctx, k.ItemName, k.Exterior)
+		goodID, mhn, err := s.provider.ResolveGoodsInfo(ctx, k.ItemName, k.Exterior, s.findMarketHashName(k))
 		if err != nil {
 			s.log.Warn("market: resolve goods failed", "itemName", k.ItemName, "exterior", k.Exterior, "err", err)
 			continue
@@ -317,6 +317,32 @@ func (s *MarketService) findExistingGoods(k struct {
 		}
 	}
 	return 0, ""
+}
+
+// findMarketHashName returns any known market_hash_name for an item+exterior pair,
+// even if csqaq_goods_id hasn't been resolved yet. Useful as a canonical search term
+// when the Chinese item_name doesn't match csqaq's naming.
+func (s *MarketService) findMarketHashName(k struct {
+	ItemName string
+	Exterior string
+}) string {
+	for _, table := range []string{"inventory", "trade_records"} {
+		var mhn string
+		row := s.db.Table(table).
+			Select("market_hash_name").
+			Where("item_name = ? AND exterior = ? AND market_hash_name != ''", k.ItemName, k.Exterior).
+			Row()
+		if row == nil {
+			continue
+		}
+		if err := row.Scan(&mhn); err != nil {
+			continue
+		}
+		if mhn != "" {
+			return mhn
+		}
+	}
+	return ""
 }
 
 func (s *MarketService) updateGoods(k struct {
