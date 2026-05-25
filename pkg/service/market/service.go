@@ -22,6 +22,7 @@ type MarketService struct {
 	ttlMin      int
 	provider    platform.PriceProvider
 	stopRefresh chan struct{}
+	startMu     sync.Mutex
 	refreshMu   sync.Mutex
 	refreshWg   sync.WaitGroup
 }
@@ -131,6 +132,8 @@ func (s *MarketService) GetAllPrices() ([]platform.PriceInfo, error) {
 // StartAutoRefresh begins periodic full refresh of all market prices.
 // Safe to call multiple times — waits for previous loop to finish before starting a new one.
 func (s *MarketService) StartAutoRefresh(_ context.Context) {
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
 	if s.stopRefresh != nil {
 		close(s.stopRefresh)
 		s.refreshWg.Wait()
