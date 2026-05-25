@@ -97,7 +97,7 @@ func (o *ormImpl) FindAllBuys(tradeType string) ([]model.TradeRecord, error) {
 func (o *ormImpl) FindEarliestUnmatchedBuy(itemName, exterior string, paintSeed, paintIndex int, paintWear float64, beforeTime int64) (*model.TradeRecord, error) {
 	var buys []model.TradeRecord
 	err := o.db.Where(
-		"trade_type = 'buy' AND item_name = ? AND (exterior = ? OR exterior = '' OR ? = '') AND paint_seed = ? AND paint_index = ? AND paint_wear BETWEEN ? AND ? AND trade_at <= ? AND consumed_quantity < quantity",
+		"trade_type = 'buy' AND REPLACE(item_name, ' ', '') = REPLACE(?, ' ', '') AND (exterior = ? OR exterior = '' OR ? = '') AND paint_seed = ? AND paint_index = ? AND paint_wear BETWEEN ? AND ? AND trade_at <= ? AND consumed_quantity < quantity",
 		itemName, exterior, exterior, paintSeed, paintIndex, paintWear-0.0001, paintWear+0.0001, beforeTime,
 	).Order("trade_at ASC").Limit(1).Find(&buys).Error
 	if err != nil || len(buys) == 0 {
