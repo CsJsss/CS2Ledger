@@ -35,7 +35,6 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Tooltip from '@mui/material/Tooltip';
 import type { model } from '../lib/wails';
-
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
@@ -132,6 +131,25 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
         {row.original.marketPrice != null ? formatCNY(row.original.marketPrice) : '--'}
       </Typography>
     ),
+  },
+  {
+    id: 'marketTotal',
+    header: '市场总价',
+    meta: { align: 'right' },
+    cell: ({ row }) => {
+      const { marketPrice, totalQuantity } = row.original;
+      if (marketPrice == null)
+        return (
+          <Typography variant="body2" color="text.secondary" className="mono-num">
+            --
+          </Typography>
+        );
+      return (
+        <Typography variant="body2" color="text.secondary" className="mono-num">
+          {formatCNY(marketPrice * totalQuantity)}
+        </Typography>
+      );
+    },
   },
   {
     id: 'priceUpdatedAt',
@@ -442,6 +460,13 @@ export default function InventoryPage() {
                           <TableCell sx={{ py: 1 }} align="right">
                             <Typography variant="body2" color="text.secondary" className="mono-num">
                               {group.marketPrice != null ? formatCNY(group.marketPrice) : '--'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2" color="text.secondary" className="mono-num">
+                              {group.marketPrice != null
+                                ? formatCNY(group.marketPrice * group.totalQuantity)
+                                : '--'}
                             </Typography>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">

@@ -36,6 +36,7 @@ var appSortFields = map[string]bool{
 	"totalBuyPrice": true,
 	"avgBuyPrice":   true,
 	"marketPrice":   true,
+	"marketTotal":   true,
 	"unrealizedPl":  true,
 	"plPercent":     true,
 }
@@ -276,6 +277,8 @@ func (s *service) sortGroups(groups []InventoryGroup, sortBy, sortDir string) {
 			less = a.TotalQuantity < b.TotalQuantity
 		case "marketPrice":
 			less = ptrValue(a.MarketPrice) < ptrValue(b.MarketPrice)
+		case "marketTotal":
+			less = marketTotal(a) < marketTotal(b)
 		case "unrealizedPl":
 			less = ptrValue(a.UnrealizedPl) < ptrValue(b.UnrealizedPl)
 		case "plPercent":
@@ -343,4 +346,8 @@ func plPercent(g InventoryGroup) float64 {
 		return -1e18
 	}
 	return float64(*g.MarketPrice-g.AvgBuyPrice) / float64(g.AvgBuyPrice)
+}
+
+func marketTotal(g InventoryGroup) int64 {
+	return ptrValue(g.MarketPrice) * g.TotalQuantity
 }
