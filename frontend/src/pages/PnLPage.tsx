@@ -129,7 +129,7 @@ export default function PnLPage() {
       },
       series: [
         {
-          name: 'Net P/L',
+          name: '月度净盈亏',
           type: 'bar',
           data: barValues,
           barWidth: '55%',
@@ -139,7 +139,7 @@ export default function PnLPage() {
           },
         },
         {
-          name: 'Cumulative P/L',
+          name: '累计盈亏',
           type: 'line',
           data: cumulative,
           smooth: true,
