@@ -42,6 +42,8 @@ func New(
 	}
 	inv.SetPriceProvider(mkt)
 	inv.SetPriceSource(cfg.PriceSource)
+	trd.SetPriceProvider(mkt)
+	trd.SetPriceSource(cfg.PriceSource)
 	return s
 }
 

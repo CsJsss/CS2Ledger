@@ -27,8 +27,8 @@ type TradeInterface interface {
 	FindEarliestUnmatchedBuy(itemName, exterior string, paintSeed, paintIndex int, paintWear float64, beforeTime int64) (*model.TradeRecord, error)
 	ClearAllMatches() error
 	RebuildInventory() error
-	FindCompletedTradeGroupNames(accountID uint, offset, limit int, sortBy, sortDir string) ([]string, int64, error)
-	FindSellsByItemNames(accountID uint, itemNames []string) ([]model.TradeRecord, error)
+	FindCompletedTradeGroupKeys(accountID uint, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
+	FindSellsByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.TradeRecord, error)
 	FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
 }
 

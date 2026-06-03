@@ -145,9 +145,9 @@ func (o *ormImpl) RebuildInventory() error {
 	})
 }
 
-// FindCompletedTradeGroupNames returns paginated distinct item names for completed trades.
+// FindCompletedTradeGroupKeys returns paginated distinct (item_name, exterior) pairs for completed trades.
 // Pass accountID=0 to query across all accounts.
-func (o *ormImpl) FindCompletedTradeGroupNames(accountID uint, offset, limit int, sortBy, sortDir string) ([]string, int64, error) {
+func (o *ormImpl) FindCompletedTradeGroupKeys(accountID uint, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error) {
 	var total int64
 	q := o.db.Model(&model.TradeRecord{}).
 		Where("trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL")
@@ -156,35 +156,43 @@ func (o *ormImpl) FindCompletedTradeGroupNames(accountID uint, offset, limit int
 	} else {
 		q = q.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
 	}
-	if err := q.Select("COUNT(DISTINCT item_name)").Scan(&total).Error; err != nil {
+	if err := q.Select("COUNT(DISTINCT item_name || '|' || COALESCE(exterior, ''))").Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	var names []string
+	var keys []InventoryGroupKey
 	q2 := o.db.Model(&model.TradeRecord{}).
-		Select("item_name").
+		Select("item_name, COALESCE(exterior, '') AS exterior").
 		Where("trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL")
 	if accountID != 0 {
 		q2 = q2.Where("account_id = ?", accountID)
 	} else {
 		q2 = q2.Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)")
 	}
-	err := q2.Group("item_name").Order(sortBy+" "+sortDir).
+	err := q2.Group("item_name, exterior").Order(sortBy + " " + sortDir).
 		Offset(offset).Limit(limit).
-		Pluck("item_name", &names).Error
-	return names, total, err
+		Find(&keys).Error
+	return keys, total, err
 }
 
-// FindSellsByItemNames returns matched sells for the given item names.
+// FindSellsByGroupKeys returns matched sells for the given (item_name, exterior) pairs.
 // Pass accountID=0 to query across all accounts.
-func (o *ormImpl) FindSellsByItemNames(accountID uint, itemNames []string) ([]model.TradeRecord, error) {
-	if len(itemNames) == 0 {
+func (o *ormImpl) FindSellsByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.TradeRecord, error) {
+	if len(keys) == 0 {
 		return nil, nil
 	}
+
+	var conditions []string
+	var args []any
+	for _, k := range keys {
+		conditions = append(conditions, "(item_name = ? AND COALESCE(exterior, '') = ?)")
+		args = append(args, k.ItemName, k.Exterior)
+	}
+
 	var sells []model.TradeRecord
 	q := o.db.Where(
-		"item_name IN ? AND trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL",
-		itemNames,
+		"("+strings.Join(conditions, " OR ")+") AND trade_type = 'sell' AND matched_buy_trade_id IS NOT NULL",
+		args...,
 	)
 	if accountID != 0 {
 		q = q.Where("account_id = ?", accountID)

@@ -8,8 +8,21 @@ import (
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/orm"
+	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
+
+func ptrValue(p *int64) int64 {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+// PriceProvider is a subset of market.MarketInterface to avoid import cycles.
+type PriceProvider interface {
+	GetAllPrices() ([]platform.PriceInfo, error)
+}
 
 var (
 	ErrInvalidSortBy = errors.New("invalid sortBy")
@@ -25,12 +38,15 @@ var sqlSortBy = map[string]string{
 // appSortFields are sort keys applied in Go after groups are built.
 // These fields are computed per group (sums, counts) and have no SQL column.
 var appSortFields = map[string]bool{
-	"count":     true,
-	"totalBuy":  true,
-	"totalSell": true,
-	"grossPl":   true,
-	"netPl":     true,
-	"fees":      true,
+	"count":       true,
+	"totalBuy":    true,
+	"totalSell":   true,
+	"grossPl":     true,
+	"netPl":       true,
+	"fees":        true,
+	"marketPrice": true,
+	"marketTotal": true,
+	"postTradePl": true,
 }
 
 type CompletedTradeView struct {
@@ -48,12 +64,19 @@ type CompletedTradeView struct {
 
 type TradeGroup struct {
 	ItemName       string               `json:"itemName"`
+	Exterior       string               `json:"exterior"`
+	CsqaqGoodsID   int                  `json:"csqaqGoodsId,omitempty"`
+	MarketHashName string               `json:"marketHashName"`
 	Count          int                  `json:"count"`
+	TotalQuantity  int64                `json:"totalQuantity"`
 	TotalBuyPrice  int64                `json:"totalBuyPrice"`
 	TotalSellPrice int64                `json:"totalSellPrice"`
 	TotalGrossPl   int64                `json:"totalGrossPl"`
 	TotalFee       int64                `json:"totalFee"`
 	TotalNetPl     int64                `json:"totalNetPl"`
+	MarketPrice    *int64               `json:"marketPrice,omitempty"`
+	MarketTotal    *int64               `json:"marketTotal,omitempty"`
+	PostTradePl    *int64               `json:"postTradePl,omitempty"`
 	Trades         []CompletedTradeView `json:"trades"`
 }
 
@@ -77,15 +100,29 @@ type TradeInterface interface {
 	ListCompletedTradeGroups(accountID uint, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error)
 	GetCompletedTradesSummary(accountID uint) (*CompletedTradesSummary, error)
 	ListUnmatchedSells(accountID uint) ([]model.TradeRecord, error)
+	SetPriceProvider(p PriceProvider)
+	SetPriceSource(source string)
 }
 
 type service struct {
-	log *logfx.Logger
-	orm orm.ORMInterface
+	log         *logfx.Logger
+	orm         orm.ORMInterface
+	prices      PriceProvider
+	priceSource string
 }
 
 func NewService(log *logfx.Logger, orm orm.ORMInterface) *service {
 	return &service{log: log, orm: orm}
+}
+
+// SetPriceProvider sets the market price source (called after DI wiring).
+func (s *service) SetPriceProvider(p PriceProvider) {
+	s.prices = p
+}
+
+// SetPriceSource sets which price to use (buff/youpin/steam).
+func (s *service) SetPriceSource(source string) {
+	s.priceSource = source
 }
 
 func (svc *service) ListByAccount(accountID uint, tradeType string) ([]model.TradeRecord, error) {
@@ -150,30 +187,32 @@ func (svc *service) ListCompletedTradeGroups(accountID uint, page, pageSize int,
 		sortDir = "asc"
 	}
 
-	// SQL-level sort: paginate group names via ORM, keep only current page
+	// SQL-level sort: paginate group keys via ORM, keep only current page
 	if col, ok := sqlSortBy[sortBy]; ok {
 		offset := (page - 1) * pageSize
-		names, total, err := svc.orm.FindCompletedTradeGroupNames(accountID, offset, pageSize, col, sortDir)
+		keys, total, err := svc.orm.FindCompletedTradeGroupKeys(accountID, offset, pageSize, col, sortDir)
 		if err != nil {
 			return nil, err
 		}
-		groups, err := svc.fetchAndBuildGroups(accountID, names)
+		groups, err := svc.fetchAndBuildGroups(accountID, keys)
 		if err != nil {
 			return nil, err
 		}
+		svc.enrichWithPrices(groups)
 		return &PaginatedGroups{Groups: groups, Total: total, Page: page, PageSize: pageSize}, nil
 	}
 
 	// App-level sort: fetch all groups, sort in Go, then paginate
 	if appSortFields[sortBy] {
-		names, _, err := svc.orm.FindCompletedTradeGroupNames(accountID, 0, 10000, "item_name", "asc")
+		keys, _, err := svc.orm.FindCompletedTradeGroupKeys(accountID, 0, 10000, "item_name", "asc")
 		if err != nil {
 			return nil, err
 		}
-		allGroups, err := svc.fetchAndBuildGroups(accountID, names)
+		allGroups, err := svc.fetchAndBuildGroups(accountID, keys)
 		if err != nil {
 			return nil, err
 		}
+		svc.enrichWithPrices(allGroups)
 		svc.sortGroups(allGroups, sortBy, sortDir)
 		total := int64(len(allGroups))
 		offset := (page - 1) * pageSize
@@ -190,11 +229,11 @@ func (svc *service) ListCompletedTradeGroups(accountID uint, page, pageSize int,
 	return nil, ErrInvalidSortBy
 }
 
-func (svc *service) fetchAndBuildGroups(accountID uint, names []string) ([]TradeGroup, error) {
-	if len(names) == 0 {
+func (svc *service) fetchAndBuildGroups(accountID uint, keys []orm.InventoryGroupKey) ([]TradeGroup, error) {
+	if len(keys) == 0 {
 		return nil, nil
 	}
-	sells, err := svc.orm.FindSellsByItemNames(accountID, names)
+	sells, err := svc.orm.FindSellsByGroupKeys(accountID, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -203,26 +242,44 @@ func (svc *service) fetchAndBuildGroups(accountID uint, names []string) ([]Trade
 		return nil, err
 	}
 
-	byName := make(map[string][]CompletedTradeView)
+	type groupKey struct {
+		itemName string
+		exterior string
+	}
+	byKey := make(map[groupKey][]CompletedTradeView)
 	for _, v := range views {
-		n := v.ItemName
-		byName[n] = append(byName[n], v)
+		k := groupKey{itemName: v.ItemName, exterior: v.Exterior}
+		byKey[k] = append(byKey[k], v)
 	}
 
-	groups := make([]TradeGroup, 0, len(names))
-	for _, name := range names {
-		trades := byName[name]
-		var totalBuyPrice, totalSellPrice, totalGrossPl, totalFee, totalNetPl int64
+	groups := make([]TradeGroup, 0, len(keys))
+	for _, k := range keys {
+		gk := groupKey{itemName: k.ItemName, exterior: k.Exterior}
+		trades := byKey[gk]
+		mhn := ""
+		goodsID := 0
+		var totalQuantity, totalBuyPrice, totalSellPrice, totalGrossPl, totalFee, totalNetPl int64
 		for _, t := range trades {
+			totalQuantity += t.Quantity
 			totalBuyPrice += t.BuyTrade.TotalPrice
 			totalSellPrice += t.SellTrade.TotalPrice
 			totalGrossPl += t.GrossPl
 			totalFee += t.TotalFee
 			totalNetPl += t.NetPl
+			if mhn == "" {
+				mhn = t.SellTrade.MarketHashName
+			}
+			if goodsID == 0 {
+				goodsID = t.SellTrade.CsqaqGoodsID
+			}
 		}
 		groups = append(groups, TradeGroup{
-			ItemName:       name,
+			ItemName:       k.ItemName,
+			Exterior:       k.Exterior,
+			CsqaqGoodsID:   goodsID,
+			MarketHashName: mhn,
 			Count:          len(trades),
+			TotalQuantity:  totalQuantity,
 			TotalBuyPrice:  totalBuyPrice,
 			TotalSellPrice: totalSellPrice,
 			TotalGrossPl:   totalGrossPl,
@@ -252,6 +309,12 @@ func (svc *service) sortGroups(groups []TradeGroup, sortBy, sortDir string) {
 			less = a.TotalNetPl < b.TotalNetPl
 		case "fees":
 			less = a.TotalFee < b.TotalFee
+		case "marketPrice":
+			less = ptrValue(a.MarketPrice) < ptrValue(b.MarketPrice)
+		case "marketTotal":
+			less = ptrValue(a.MarketTotal) < ptrValue(b.MarketTotal)
+		case "postTradePl":
+			less = ptrValue(a.PostTradePl) < ptrValue(b.PostTradePl)
 		default:
 			less = a.ItemName < b.ItemName
 		}
@@ -260,6 +323,48 @@ func (svc *service) sortGroups(groups []TradeGroup, sortBy, sortDir string) {
 		}
 		return less
 	})
+}
+
+func (svc *service) enrichWithPrices(groups []TradeGroup) {
+	if svc.prices == nil || len(groups) == 0 {
+		return
+	}
+	priceList, err := svc.prices.GetAllPrices()
+	if err != nil || len(priceList) == 0 {
+		return
+	}
+	priceMap := make(map[string]platform.PriceInfo, len(priceList))
+	for _, p := range priceList {
+		priceMap[p.MarketHashName] = p
+	}
+	for i := range groups {
+		g := &groups[i]
+		if g.MarketHashName == "" || g.TotalQuantity == 0 {
+			continue
+		}
+		info, ok := priceMap[g.MarketHashName]
+		if !ok {
+			continue
+		}
+		var mp int64
+		switch svc.priceSource {
+		case "youpin":
+			mp = int64(info.YoupinPrice * 100)
+		case "steam":
+			mp = int64(info.SteamPrice * 100)
+		default:
+			mp = int64(info.BuffPrice * 100)
+		}
+		g.MarketPrice = &mp
+		mt := mp * g.TotalQuantity
+		g.MarketTotal = &mt
+		// Post-trade P&L = (marketPrice - avgSellPrice) * totalQuantity
+		if g.TotalQuantity > 0 {
+			avgSellPrice := g.TotalSellPrice / g.TotalQuantity
+			ptpl := (mp - avgSellPrice) * g.TotalQuantity
+			g.PostTradePl = &ptpl
+		}
+	}
 }
 
 func (svc *service) ListCompletedTrades(accountID uint) ([]CompletedTradeView, error) {

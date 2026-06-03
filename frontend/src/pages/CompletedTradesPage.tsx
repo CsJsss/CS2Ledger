@@ -40,11 +40,14 @@ import PnlSummaryCards from '../components/PnlSummaryCards';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PageSearchBar from '../components/PageSearchBar';
+import Tooltip from '@mui/material/Tooltip';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useCompletedTrades } from '../hooks/useCompletedTrades';
 import { useCompletedTradesSummary } from '../hooks/useCompletedTradesSummary';
 import { useUnmatchedSells } from '../hooks/useUnmatchedSells';
 import { useUIStore } from '../store/uiStore';
 import { formatCNY, plHexColor } from '../lib/format';
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import type { model, trade } from '../lib/wails';
 
 declare module '@tanstack/react-table' {
@@ -58,6 +61,9 @@ type TabKey = 'completed' | 'unmatched';
 
 interface GroupedTrade {
   itemName: string;
+  exterior: string;
+  csqaqGoodsId?: number;
+  marketHashName?: string;
   count: number;
   trades: trade.CompletedTradeView[];
   totalBuyPrice: number;
@@ -65,10 +71,14 @@ interface GroupedTrade {
   totalGrossPl: number;
   totalFee: number;
   totalNetPl: number;
+  marketPrice?: number;
+  marketTotal?: number;
+  postTradePl?: number;
 }
 
 interface GroupedUnmatchedSell {
   itemName: string;
+  exterior: string;
   count: number;
   sells: model.TradeRecord[];
   totalSellPrice: number;
@@ -215,16 +225,32 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
   },
   {
     accessorKey: 'itemName',
-    header: 'Item Name',
-    cell: (info) => (
-      <Typography variant="body2" fontWeight={500}>
-        {info.getValue() as string}
-      </Typography>
+    header: '物品名称',
+    cell: ({ row }) => (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Typography variant="body2" fontWeight={500}>
+          {row.original.itemName}
+          {row.original.exterior ? ` (${row.original.exterior})` : ''}
+        </Typography>
+        {row.original.csqaqGoodsId ? (
+          <Tooltip title="csqaq">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                BrowserOpenURL(`https://www.csqaq.com/goods/${row.original.csqaqGoodsId}`);
+              }}
+            >
+              <OpenInNewIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+      </Box>
     ),
   },
   {
     accessorKey: 'count',
-    header: 'Trades',
+    header: '交易数',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -234,7 +260,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
   },
   {
     accessorKey: 'totalBuyPrice',
-    header: 'Total Buy',
+    header: '买入总额',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -244,7 +270,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
   },
   {
     accessorKey: 'totalSellPrice',
-    header: 'Total Sell',
+    header: '卖出总额',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -253,8 +279,37 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
     ),
   },
   {
+    id: 'marketTotal',
+    header: '市场总价',
+    meta: { align: 'right' },
+    cell: ({ row }) => (
+      <Typography variant="body2" color="text.secondary" className="mono-num">
+        {row.original.marketTotal != null ? formatCNY(row.original.marketTotal) : '--'}
+      </Typography>
+    ),
+  },
+  {
+    id: 'postTradePl',
+    header: '交易后盈亏',
+    meta: { align: 'right' },
+    cell: ({ row }) => {
+      if (row.original.postTradePl == null)
+        return (
+          <Typography variant="body2" color="text.secondary" className="mono-num">
+            --
+          </Typography>
+        );
+      const v = row.original.postTradePl;
+      return (
+        <Typography variant="body2" color={plHexColor(v)} className="mono-num">
+          {formatCNY(v)}
+        </Typography>
+      );
+    },
+  },
+  {
     accessorKey: 'totalGrossPl',
-    header: 'Gross P/L',
+    header: '毛利',
     meta: { align: 'right' },
     cell: (info) => {
       const v = info.getValue() as number;
@@ -267,7 +322,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
   },
   {
     accessorKey: 'totalFee',
-    header: 'Fees',
+    header: '手续费',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -277,7 +332,7 @@ const groupedColumns: ColumnDef<GroupedTrade>[] = [
   },
   {
     accessorKey: 'totalNetPl',
-    header: 'Net P/L',
+    header: '净利润',
     meta: { align: 'right' },
     cell: (info) => {
       const v = info.getValue() as number;
@@ -308,16 +363,17 @@ const unmatchedGroupedColumns: ColumnDef<GroupedUnmatchedSell>[] = [
   },
   {
     accessorKey: 'itemName',
-    header: 'Item Name',
-    cell: (info) => (
+    header: '物品名称',
+    cell: ({ row }) => (
       <Typography variant="body2" fontWeight={500}>
-        {info.getValue() as string}
+        {row.original.itemName}
+        {row.original.exterior ? ` (${row.original.exterior})` : ''}
       </Typography>
     ),
   },
   {
     accessorKey: 'count',
-    header: 'Sells',
+    header: '卖出数',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -327,7 +383,7 @@ const unmatchedGroupedColumns: ColumnDef<GroupedUnmatchedSell>[] = [
   },
   {
     accessorKey: 'totalSellPrice',
-    header: 'Total Sell',
+    header: '卖出总额',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -337,7 +393,7 @@ const unmatchedGroupedColumns: ColumnDef<GroupedUnmatchedSell>[] = [
   },
   {
     accessorKey: 'totalFee',
-    header: 'Fees',
+    header: '手续费',
     meta: { align: 'right' },
     cell: (info) => (
       <Typography variant="body2" className="mono-num">
@@ -469,6 +525,8 @@ function CompletedTradesContent({
                         ['count', '交易数', true],
                         ['totalBuy', '买入总额', true],
                         ['totalSell', '卖出总额', true],
+                        ['marketTotal', '市场总价', true],
+                        ['postTradePl', '交易后盈亏', true],
                         ['grossPl', '毛利', true],
                         ['fees', '手续费', true],
                         ['netPl', '净利润', true],
@@ -491,13 +549,14 @@ function CompletedTradesContent({
                 </TableHead>
                 <TableBody>
                   {groups.map((group) => {
-                    const expanded = expandedNames.has(group.itemName);
+                    const groupKey = `${group.itemName}|${group.exterior}`;
+                    const expanded = expandedNames.has(groupKey);
                     return (
-                      <React.Fragment key={group.itemName}>
+                      <React.Fragment key={groupKey}>
                         <TableRow
                           hover
                           sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
-                          onClick={() => toggle(group.itemName)}
+                          onClick={() => toggle(groupKey)}
                         >
                           <TableCell sx={{ py: 1 }}>
                             <IconButton size="small">
@@ -509,9 +568,27 @@ function CompletedTradesContent({
                             </IconButton>
                           </TableCell>
                           <TableCell sx={{ py: 1 }}>
-                            <Typography variant="body2" fontWeight={500}>
-                              {group.itemName}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="body2" fontWeight={500}>
+                                {group.itemName}
+                                {group.exterior ? ` (${group.exterior})` : ''}
+                              </Typography>
+                              {group.csqaqGoodsId ? (
+                                <Tooltip title="csqaq">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      BrowserOpenURL(
+                                        `https://www.csqaq.com/goods/${group.csqaqGoodsId}`,
+                                      );
+                                    }}
+                                  >
+                                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : null}
+                            </Box>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
                             <Typography variant="body2" className="mono-num">
@@ -527,6 +604,30 @@ function CompletedTradesContent({
                             <Typography variant="body2" className="mono-num">
                               {formatCNY(group.totalSellPrice)}
                             </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            <Typography variant="body2" color="text.secondary" className="mono-num">
+                              {group.marketTotal != null ? formatCNY(group.marketTotal) : '--'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }} align="right">
+                            {group.postTradePl != null ? (
+                              <Typography
+                                variant="body2"
+                                color={plHexColor(group.postTradePl)}
+                                className="mono-num"
+                              >
+                                {formatCNY(group.postTradePl)}
+                              </Typography>
+                            ) : (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                className="mono-num"
+                              >
+                                --
+                              </Typography>
+                            )}
                           </TableCell>
                           <TableCell sx={{ py: 1 }} align="right">
                             <Typography
@@ -761,18 +862,21 @@ function UnmatchedSellsContent({
     const map = new Map<string, model.TradeRecord[]>();
     for (const s of sells) {
       const name = s.itemName ?? 'Unknown';
-      const arr = map.get(name);
+      const exterior = s.exterior ?? '';
+      const key = `${name}|${exterior}`;
+      const arr = map.get(key);
       if (arr) arr.push(s);
-      else map.set(name, [s]);
+      else map.set(key, [s]);
     }
-    return Array.from(map, ([itemName, sells]) => {
+    return Array.from(map, ([key, sells]) => {
       let totalSellPrice = 0;
       let totalFee = 0;
       for (const s of sells) {
         totalSellPrice += s.totalPrice;
         totalFee += s.fee;
       }
-      return { itemName, count: sells.length, sells, totalSellPrice, totalFee };
+      const [itemName, exterior] = key.split('|', 2);
+      return { itemName, exterior, count: sells.length, sells, totalSellPrice, totalFee };
     }).sort((a, b) => a.itemName.localeCompare(b.itemName));
   }, [sells]);
 
@@ -797,7 +901,7 @@ function UnmatchedSellsContent({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.itemName,
+    getRowId: (row) => `${row.itemName}|${row.exterior}`,
   });
 
   const totalSells = sells.length;
@@ -927,7 +1031,8 @@ function UnmatchedSellsContent({
               </TableHead>
               <TableBody>
                 {table.getRowModel().rows.map((groupRow) => {
-                  const expanded = expandedNames.has(groupRow.original.itemName);
+                  const groupKey = `${groupRow.original.itemName}|${groupRow.original.exterior}`;
+                  const expanded = expandedNames.has(groupKey);
                   return (
                     <React.Fragment key={groupRow.id}>
                       <TableRow
@@ -936,7 +1041,7 @@ function UnmatchedSellsContent({
                           bgcolor: (t) => (t.palette.mode === 'dark' ? '#111114' : '#f8fafc'),
                           cursor: 'pointer',
                         }}
-                        onClick={() => toggle(groupRow.original.itemName)}
+                        onClick={() => toggle(groupKey)}
                       >
                         {groupRow.getVisibleCells().map((cell) => (
                           <TableCell
