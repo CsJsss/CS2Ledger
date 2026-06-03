@@ -180,29 +180,31 @@ func (s *MarketService) refreshAll(ctx context.Context) {
 }
 
 func (s *MarketService) fetchPrices(ctx context.Context) {
-	rows, err := s.db.Table("inventory").
-		Select("DISTINCT market_hash_name").
-		Where("market_hash_name != ''").
-		Where("account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)").
-		Rows()
-	if err != nil {
-		s.log.Warn("market: refresh query failed", "err", err)
-		return
-	}
-	defer func() { _ = rows.Close() }()
-
+	// Collect distinct market_hash_names from both inventory (current holdings)
+	// and trade_records (historical trades, for post-trade P&L on completed trades page).
+	seen := make(map[string]bool)
 	var names []string
-	for rows.Next() {
-		var n string
-		if err := rows.Scan(&n); err != nil {
+
+	subQuery := "account_id IN (SELECT id FROM accounts WHERE deleted_at IS NULL)"
+	for _, table := range []string{"inventory", "trade_records"} {
+		var res []string
+		if err := s.db.Table(table).
+			Where("market_hash_name != ''").
+			Where(subQuery).
+			Distinct("market_hash_name").
+			Pluck("market_hash_name", &res).Error; err != nil {
+			s.log.Warn("market: refresh query failed", "table", table, "err", err)
 			continue
 		}
-		if n != "" {
-			names = append(names, n)
+		for _, n := range res {
+			if n != "" && !seen[n] {
+				seen[n] = true
+				names = append(names, n)
+			}
 		}
 	}
 	if len(names) == 0 {
-		s.log.Debug("market: refresh found no items in inventory")
+		s.log.Debug("market: refresh found no items in inventory or trade history")
 		return
 	}
 

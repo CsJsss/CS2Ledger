@@ -728,12 +728,19 @@ export namespace trade {
 	}
 	export class TradeGroup {
 	    itemName: string;
+	    exterior: string;
+	    csqaqGoodsId?: number;
+	    marketHashName: string;
 	    count: number;
+	    totalQuantity: number;
 	    totalBuyPrice: number;
 	    totalSellPrice: number;
 	    totalGrossPl: number;
 	    totalFee: number;
 	    totalNetPl: number;
+	    marketPrice?: number;
+	    marketTotal?: number;
+	    postTradePl?: number;
 	    trades: CompletedTradeView[];
 	
 	    static createFrom(source: any = {}) {
@@ -743,12 +750,19 @@ export namespace trade {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.itemName = source["itemName"];
+	        this.exterior = source["exterior"];
+	        this.csqaqGoodsId = source["csqaqGoodsId"];
+	        this.marketHashName = source["marketHashName"];
 	        this.count = source["count"];
+	        this.totalQuantity = source["totalQuantity"];
 	        this.totalBuyPrice = source["totalBuyPrice"];
 	        this.totalSellPrice = source["totalSellPrice"];
 	        this.totalGrossPl = source["totalGrossPl"];
 	        this.totalFee = source["totalFee"];
 	        this.totalNetPl = source["totalNetPl"];
+	        this.marketPrice = source["marketPrice"];
+	        this.marketTotal = source["marketTotal"];
+	        this.postTradePl = source["postTradePl"];
 	        this.trades = this.convertValues(source["trades"], CompletedTradeView);
 	    }
 	
