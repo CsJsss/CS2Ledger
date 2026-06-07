@@ -51,3 +51,8 @@ func (o *ormImpl) UpdateAccountBalanceAndSyncTime(id uint, available, frozen, in
 		"last_sync_at":      syncAt,
 	}).Error
 }
+
+func (o *ormImpl) UpdateAccountBillSyncTime(id uint, syncAt int64) error {
+	return o.db.Model(&model.Account{}).Where("id = ?", id).
+		Update("bill_last_sync_at", syncAt).Error
+}

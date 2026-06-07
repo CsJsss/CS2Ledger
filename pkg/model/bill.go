@@ -21,6 +21,7 @@ const (
 	BillTypeWithdraw                  = 7  // 提现
 	BillTypeRefund                    = 8  // 退款
 	BillTypeRechargForPurchaseAccount = 9  // 求购账户充值
+	BillTypeWithdrawRefund            = 10 // 提现退款
 	BillTypeOther                     = 99 // 其他 — 回退到平台原始 TypeName 展示
 )
 
@@ -34,6 +35,7 @@ var billTypeNames = map[int]string{
 	BillTypeWithdraw:                  "提现",
 	BillTypeRefund:                    "退款",
 	BillTypeRechargForPurchaseAccount: "求购账户充值",
+	BillTypeWithdrawRefund:            "提现退款",
 }
 
 func BillTypeName(t int) string {

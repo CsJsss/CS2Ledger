@@ -11,6 +11,7 @@ type AccountInterface interface {
 	UpdateAccountInfo(id uint, name string, cookie string) error
 	UpdateAccountStatus(id uint, status string) error
 	UpdateAccountBalanceAndSyncTime(id uint, available, frozen, instant, purchase int64, syncAt int64) error
+	UpdateAccountBillSyncTime(id uint, syncAt int64) error
 }
 
 type TradeInterface interface {
@@ -61,10 +62,12 @@ type RentalInterface interface {
 
 type BillInterface interface {
 	CreateBill(*model.BillRecord) error
-	ListBillsByAccount(accountID uint, limit, offset int) ([]model.BillRecord, error)
-	ListAllBills(limit, offset int) ([]model.BillRecord, error)
-	CountBillsByAccount(accountID uint) (int64, error)
-	CountAllBills() (int64, error)
+	ListBillsByAccount(accountID uint, limit, offset int, f BillFilter) ([]model.BillRecord, error)
+	ListAllBills(limit, offset int, f BillFilter) ([]model.BillRecord, error)
+	CountBillsByAccount(accountID uint, f BillFilter) (int64, error)
+	CountAllBills(f BillFilter) (int64, error)
+	SumBillsByTypes(accountID uint, typeIDs []int) (int64, error)
+	SumBillByDay(accountID uint, f BillFilter) ([]DailyBillSummary, error)
 }
 
 type ORMInterface interface {

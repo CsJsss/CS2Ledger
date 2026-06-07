@@ -1,3 +1,40 @@
+export namespace bill {
+	
+	export class PaginatedBills {
+	    records: model.BillRecord[];
+	    totalCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PaginatedBills(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.records = this.convertValues(source["records"], model.BillRecord);
+	        this.totalCount = source["totalCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace inventory {
 	
 	export class InventoryGroup {
@@ -145,6 +182,22 @@ export namespace inventory {
 
 export namespace main {
 	
+	export class DailyBillPoint {
+	    date: string;
+	    typeId: number;
+	    thisMoney: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DailyBillPoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.typeId = source["typeId"];
+	        this.thisMoney = source["thisMoney"];
+	    }
+	}
 	export class DashboardSummary {
 	    realizedPl: number;
 	    inventoryCount: number;
@@ -213,6 +266,7 @@ export namespace model {
 	    remark: string;
 	    status: string;
 	    lastSyncAt?: number;
+	    billLastSyncAt?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Account(source);
@@ -233,6 +287,7 @@ export namespace model {
 	        this.remark = source["remark"];
 	        this.status = source["status"];
 	        this.lastSyncAt = source["lastSyncAt"];
+	        this.billLastSyncAt = source["billLastSyncAt"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

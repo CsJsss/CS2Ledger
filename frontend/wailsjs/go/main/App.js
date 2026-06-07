@@ -14,12 +14,16 @@ export function GetAccounts() {
   return window['go']['main']['App']['GetAccounts']();
 }
 
-export function GetBillRecords(arg1) {
-  return window['go']['main']['App']['GetBillRecords'](arg1);
+export function GetBillChartData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetBillChartData'](arg1, arg2, arg3);
 }
 
-export function GetCompletedTrades(arg1) {
-  return window['go']['main']['App']['GetCompletedTrades'](arg1);
+export function GetBillRecords(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetBillRecords'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function GetCompletedTrades(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetCompletedTrades'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetCompletedTradesSummary(arg1) {
@@ -30,12 +34,16 @@ export function GetDashboardSummary() {
   return window['go']['main']['App']['GetDashboardSummary']();
 }
 
-export function GetInventory(arg1, arg2) {
-  return window['go']['main']['App']['GetInventory'](arg1, arg2);
+export function GetInventory(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetInventory'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function GetItemDetail(arg1, arg2) {
   return window['go']['main']['App']['GetItemDetail'](arg1, arg2);
+}
+
+export function GetMarketPrices() {
+  return window['go']['main']['App']['GetMarketPrices']();
 }
 
 export function GetMonthlyBreakdown(arg1, arg2) {
@@ -48,6 +56,10 @@ export function GetPnlSummary(arg1) {
 
 export function GetRentalHistory(arg1, arg2) {
   return window['go']['main']['App']['GetRentalHistory'](arg1, arg2);
+}
+
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
 }
 
 export function GetUnmatchedSells(arg1) {
@@ -64,4 +76,8 @@ export function UpdateAccount(arg1) {
 
 export function UpdateAccountInfo(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateAccountInfo'](arg1, arg2, arg3);
+}
+
+export function UpdateSettings(arg1) {
+  return window['go']['main']['App']['UpdateSettings'](arg1);
 }

@@ -118,6 +118,8 @@ func youpinTypeToInternal(typeID int) int {
 		return model.BillTypeRenewalRental
 	case 43:
 		return model.BillTypeRechargForPurchaseAccount
+	case 23:
+		return model.BillTypeWithdrawRefund
 	case 187:
 		return model.BillTypeRentalFee
 	default:

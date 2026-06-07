@@ -66,6 +66,8 @@ type QueryConfig struct {
 	Since       int64             // unix ms, 0 = no filter
 	Limit       int               // max records, 0 = no limit
 	TradeState  TradeState        // order completion filter, default = all
+	Page        int               // single page to fetch, 0 = all pages
+	PageSize    int               // page size, 0 = platform default
 	ExtraParams map[string]string // merged into HTTP request params
 }
 
@@ -92,6 +94,16 @@ func WithTradeState(s TradeState) QueryOption {
 // WithLimit caps the number of records returned.
 func WithLimit(limit int) QueryOption {
 	return func(c *QueryConfig) { c.Limit = limit }
+}
+
+// WithPage fetches a single page (1-based). 0 = fetch all pages.
+func WithPage(page int) QueryOption {
+	return func(c *QueryConfig) { c.Page = page }
+}
+
+// WithPageSize sets the page size for paginated requests.
+func WithPageSize(pageSize int) QueryOption {
+	return func(c *QueryConfig) { c.PageSize = pageSize }
 }
 
 func ApplyQueryOpts(opts []QueryOption) QueryConfig {

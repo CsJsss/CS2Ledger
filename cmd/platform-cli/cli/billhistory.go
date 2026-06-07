@@ -23,6 +23,8 @@ func init() {
 	billhistoryCmd.Flags().Int("limit", 10, "Max records to show")
 	billhistoryCmd.Flags().Int64("since", 0, "Unix millisecond timestamp (0 = all)")
 	billhistoryCmd.Flags().Bool("raw", false, "Output raw JSON")
+	billhistoryCmd.Flags().Int("page", 0, "Single page to fetch (0 = all pages)")
+	billhistoryCmd.Flags().Int("pageSize", 0, "Page size (0 = default 20)")
 }
 
 func runBillHistory(cmd *cobra.Command, args []string) error {
@@ -39,8 +41,16 @@ func runBillHistory(cmd *cobra.Command, args []string) error {
 	limit, _ := cmd.Flags().GetInt("limit")
 	since, _ := cmd.Flags().GetInt64("since")
 	raw, _ := cmd.Flags().GetBool("raw")
+	page, _ := cmd.Flags().GetInt("page")
+	pageSize, _ := cmd.Flags().GetInt("pageSize")
 
 	opts := []platform.QueryOption{platform.WithSince(since), platform.WithLimit(limit)}
+	if page > 0 {
+		opts = append(opts, platform.WithPage(page))
+	}
+	if pageSize > 0 {
+		opts = append(opts, platform.WithPageSize(pageSize))
+	}
 
 	bills, err := client.GetBillHistory(context.Background(), opts...)
 	if err != nil {

@@ -14,6 +14,7 @@ type Account struct {
 	Remark           string `json:"remark"`
 	Status           string `gorm:"not null;default:active" json:"status"`
 	LastSyncAt       *int64 `json:"lastSyncAt"`
+	BillLastSyncAt   *int64 `json:"billLastSyncAt"`
 }
 
 func (Account) TableName() string { return "accounts" }

@@ -226,10 +226,7 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 	if len(data.OrderList) == 0 || finished {
 		return trades, false, nil
 	}
-	// API may return null total; fall back to page-full heuristic.
-	if data.TotalCount > 0 {
-		return trades, page*DefaultPageSize < data.TotalCount, nil
-	}
+	// API may return null total
 	return trades, len(data.OrderList) == DefaultPageSize, nil
 }
 
@@ -415,11 +412,17 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 func (c *Client) GetBillHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.BillRecord, error) {
 	c.registerDevice()
 	cfg := platform.ApplyQueryOpts(opts)
-	c.Log.Debug("youpin: fetching bill history", "since", cfg.Since)
+	c.Log.Debug("youpin: fetching bill history", "since", cfg.Since, "page", cfg.Page, "pageSize", cfg.PageSize)
+
+	// Single-page mode
+	if cfg.Page > 0 {
+		records, _, err := c.fetchBillPage(ctx, cfg.Page, cfg.Since, cfg.PageSize)
+		return records, err
+	}
 
 	bills, err := platform.FetchAllPages(ctx, c.Log, c.Name, "bill", 1*time.Second, cfg.Limit,
 		func(ctx context.Context, page int) ([]platform.BillRecord, bool, error) {
-			return c.fetchBillPage(ctx, page, cfg.Since)
+			return c.fetchBillPage(ctx, page, cfg.Since, cfg.PageSize)
 		},
 	)
 	if err != nil {
@@ -429,10 +432,13 @@ func (c *Client) GetBillHistory(ctx context.Context, opts ...platform.QueryOptio
 	return bills, nil
 }
 
-func (c *Client) fetchBillPage(ctx context.Context, page int, since int64) ([]platform.BillRecord, bool, error) {
+func (c *Client) fetchBillPage(ctx context.Context, page int, since int64, pageSize int) ([]platform.BillRecord, bool, error) {
+	if pageSize <= 0 {
+		pageSize = DefaultPageSize
+	}
 	body := map[string]any{
 		"pageIndex": page,
-		"pageSize":  DefaultPageSize,
+		"pageSize":  pageSize,
 		"Sessionid": c.deviceID,
 	}
 	_, respBody, err := c.doRequest(ctx, "POST", "/api/youpin/bff/payment/v1/user/userAssets/query/page/v2", nil, body)
@@ -442,9 +448,11 @@ func (c *Client) fetchBillPage(ctx context.Context, page int, since int64) ([]pl
 
 	data, err := parseYoupin[youpinBillPageData](respBody)
 	if err != nil {
-		c.Log.Warn("youpin bill page failed", "page", page, "err", err)
+		c.Log.Warn("youpin bill page failed", "page", page, "err", err, "body", string(respBody))
 		return nil, false, err
 	}
+
+	c.Log.Debug("youpin bill page", "page", page, "items", len(data.DataList), "total", data.Total)
 
 	records := make([]platform.BillRecord, 0, len(data.DataList))
 	finished := false
@@ -461,11 +469,11 @@ func (c *Client) fetchBillPage(ctx context.Context, page int, since int64) ([]pl
 		records = append(records, rec)
 	}
 
-	hasMore := !finished && len(data.DataList) == DefaultPageSize
-	if data.Total > 0 {
-		hasMore = page*DefaultPageSize < data.Total
+	if len(data.DataList) == 0 || finished {
+		return records, false, nil
 	}
-	return records, hasMore, nil
+	// API may return null total
+	return records, len(data.DataList) == pageSize, nil
 }
 
 // ---------------------------------------------------------------------------
