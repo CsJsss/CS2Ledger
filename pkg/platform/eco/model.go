@@ -29,6 +29,14 @@ const (
 	TradeTypeBoxOpen      = 13 // 在线开箱
 )
 
+// --- Common ---
+
+type ecoResponse[T any] struct {
+	ResultCode string `json:"ResultCode"`
+	ResultMsg  string `json:"ResultMsg"`
+	ResultData T      `json:"ResultData"`
+}
+
 // --- Balance ---
 
 type merchantMoneyModel struct {
@@ -37,12 +45,6 @@ type merchantMoneyModel struct {
 	LockMoney           float64 `json:"LockMoney"`
 	PurchaseMoney       float64 `json:"PurchaseMoney"`
 	PurchaseFrozenMoney float64 `json:"PurchaseFrozenMoney"`
-}
-
-type merchantMoneyResponse struct {
-	ResultCode string             `json:"ResultCode"`
-	ResultMsg  string             `json:"ResultMsg"`
-	ResultData merchantMoneyModel `json:"ResultData"`
 }
 
 // --- Buy Orders ---
@@ -75,12 +77,6 @@ type buyerOrderPagesModel struct {
 	PageSize    int               `json:"PageSize"`
 	TotalRecord int               `json:"TotalRecord"`
 	PageResult  []buyerOrderModel `json:"PageResult"`
-}
-
-type buyerOrderListResponse struct {
-	ResultCode string               `json:"ResultCode"`
-	ResultMsg  string               `json:"ResultMsg"`
-	ResultData buyerOrderPagesModel `json:"ResultData"`
 }
 
 // --- Sell Orders ---
@@ -116,12 +112,6 @@ type sellerOrderPagesModel struct {
 	PageSize    int                `json:"PageSize"`
 	TotalRecord int                `json:"TotalRecord"`
 	PageResult  []sellerOrderModel `json:"PageResult"`
-}
-
-type sellerOrderListResponse struct {
-	ResultCode string                `json:"ResultCode"`
-	ResultMsg  string                `json:"ResultMsg"`
-	ResultData sellerOrderPagesModel `json:"ResultData"`
 }
 
 // --- Asset Preview (from detail API) ---
@@ -202,8 +192,21 @@ type orderDetailModel struct {
 	AssetPreviewModel assetPreviewModel `json:"AssetPreviewModel"`
 }
 
-type orderDetailResponse struct {
-	ResultCode string           `json:"ResultCode"`
-	ResultMsg  string           `json:"ResultMsg"`
-	ResultData orderDetailModel `json:"ResultData"`
+// --- Fund Flow ---
+
+type fundFlowItemModel struct {
+	OrderID     string  `json:"OrderID"`
+	Amount      float64 `json:"Amount"`
+	Type        string  `json:"Type"`
+	LastAmount  float64 `json:"LastAmount"`
+	AfterAmount float64 `json:"AfterAmount"`
+	CreateTime  string  `json:"CreateTime"`
+	FounType    string  `json:"FounType"`
+}
+
+type fundFlowPagesModel struct {
+	PageIndex   int                 `json:"PageIndex"`
+	PageSize    int                 `json:"PageSize"`
+	TotalRecord int                 `json:"TotalRecord"`
+	PageResult  []fundFlowItemModel `json:"PageResult"`
 }

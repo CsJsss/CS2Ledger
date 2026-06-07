@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
@@ -95,4 +96,56 @@ func toSellTrade(o youpinSellOrder) platform.TradeRecord {
 		Fee:        fee,
 		TradeAt:    o.FinishOrderTime,
 	}
+}
+
+// youpinTypeToInternal maps YouPin typeId to internal bill type constants.
+func youpinTypeToInternal(typeID int) int {
+	switch typeID {
+	case 1:
+		return model.BillTypeRecharge
+	// 2: 提现; 44: 求购账户提现
+	case 2, 44:
+		return model.BillTypeWithdraw
+	case 3:
+		return model.BillTypePurchase
+	case 4:
+		return model.BillTypeRefund
+	case 5:
+		return model.BillTypeSell
+	case 16:
+		return model.BillTypeRentalIncome
+	case 25:
+		return model.BillTypeRenewalRental
+	case 43:
+		return model.BillTypeRechargForPurchaseAccount
+	case 23:
+		return model.BillTypeWithdrawRefund
+	case 187:
+		return model.BillTypeRentalFee
+	default:
+		return model.BillTypeOther
+	}
+}
+
+func toBillRecord(item youpinBillItem) (platform.BillRecord, error) {
+	money := parseYoupinPrice(json.Number(item.ThisMoney))
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", item.AddTime, time.Local)
+	if err != nil {
+		return platform.BillRecord{}, fmt.Errorf("parse addTime %q: %w", item.AddTime, err)
+	}
+	addTimeMs := t.UnixMilli()
+
+	typeID := youpinTypeToInternal(item.TypeID)
+	typeName := model.BillTypeName(typeID)
+	if typeName == "" {
+		typeName = item.TypeName
+	}
+
+	return platform.BillRecord{
+		TypeName:  typeName,
+		TypeID:    typeID,
+		ThisMoney: money,
+		OrderNo:   item.OrderNo,
+		AddTime:   addTimeMs,
+	}, nil
 }

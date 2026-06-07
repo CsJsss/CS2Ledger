@@ -49,6 +49,20 @@ func newWithParts(partnerID, privateKeyPEM string, logger *logfx.Logger) (*Clien
 	}, nil
 }
 
+// parseIgxe unmarshals an igxeResponse envelope and checks ResultCode.
+func parseIgxe[T any](body []byte) (T, error) {
+	var result igxeResponse[T]
+	if err := json.Unmarshal(body, &result); err != nil {
+		var zero T
+		return zero, err
+	}
+	if result.ResultCode != "0" {
+		var zero T
+		return zero, fmt.Errorf("igxe API error: code=%s msg=%s", result.ResultCode, result.ResultMsg)
+	}
+	return result.ResultData, nil
+}
+
 func (c *Client) Verify(ctx context.Context) error {
 	c.Log.Info("igxe: verifying")
 	_, body, err := c.doRequest(ctx, "POST", "/Api/Merchant/GetTotalMoney", nil, nil)
@@ -57,12 +71,8 @@ func (c *Client) Verify(ctx context.Context) error {
 		return fmt.Errorf("igxe verify: %w", err)
 	}
 
-	var result totalMoneyResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if _, err := parseIgxe[totalMoneyData](body); err != nil {
 		return fmt.Errorf("igxe verify: %w", err)
-	}
-	if result.ResultCode != "0" {
-		return fmt.Errorf("igxe verify: resultCode=%s", result.ResultCode)
 	}
 	c.Log.Info("igxe: verify ok")
 	return nil
@@ -75,17 +85,18 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 		return nil, fmt.Errorf("igxe balance: %w", err)
 	}
 
-	var result totalMoneyResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	data, err := parseIgxe[totalMoneyData](body)
+	if err != nil {
 		return nil, fmt.Errorf("igxe balance: %w", err)
 	}
-	if result.ResultCode != "0" {
-		return nil, fmt.Errorf("igxe balance: resultCode=%s", result.ResultCode)
-	}
 	return &platform.Balance{
-		Available: result.ResultData.Money,
+		Available: data.Money,
 		Purchase:  0,
 	}, nil
+}
+
+func (c *Client) GetBillHistory(_ context.Context, _ ...platform.QueryOption) ([]platform.BillRecord, error) {
+	return nil, nil
 }
 
 func (c *Client) GetBuyHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.TradeRecord, error) {
@@ -123,17 +134,14 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		return nil, false, err
 	}
 
-	var result sellerOrderListResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	data, err := parseIgxe[sellerOrderListData](respBody)
+	if err != nil {
 		return nil, false, err
 	}
-	if result.ResultCode != "0" {
-		return nil, false, fmt.Errorf("igxe API error: resultCode=%s msg=%s", result.ResultCode, result.ResultMsg)
-	}
 
-	trades := make([]platform.TradeRecord, 0, len(result.ResultData.PageResult))
+	trades := make([]platform.TradeRecord, 0, len(data.PageResult))
 	anyAfterSince := false
-	for _, item := range result.ResultData.PageResult {
+	for _, item := range data.PageResult {
 		tradeAt := c.parseCreateDate(item.CreateDate)
 		if tradeAt >= since {
 			anyAfterSince = true
@@ -144,10 +152,10 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		trades = append(trades, toSellTrade(item, tradeAt))
 	}
 
-	if len(result.ResultData.PageResult) > 0 && !anyAfterSince {
+	if len(data.PageResult) > 0 && !anyAfterSince {
 		return trades, false, nil
 	}
-	hasMore := len(result.ResultData.PageResult) >= 100
+	hasMore := len(data.PageResult) >= 100
 	return trades, hasMore, nil
 }
 

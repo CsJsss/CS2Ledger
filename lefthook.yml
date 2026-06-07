@@ -6,6 +6,11 @@ pre-commit:
       run: go tool goimports -w -local cs2-ledger {staged_files}
       stage_fixed: true
 
+    mockery:
+      glob: "*.go"
+      run: go generate ./...
+      stage_fixed: true
+
     golangci-lint:
       glob: "*.go"
       run: go tool golangci-lint run --new-from-rev=HEAD~1 --timeout=2m

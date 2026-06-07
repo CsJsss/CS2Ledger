@@ -65,10 +65,11 @@ func (e *Engine) SyncAccount(accountID uint) (*SyncResult, error) {
 		return nil, err
 	}
 
-	buys, sells, balance, warnings := e.fetchData(client, acc.LastSyncAt)
+	buys, sells, balance, billHistory, warnings := e.fetchData(client, acc.LastSyncAt, acc.BillLastSyncAt)
 	result := &SyncResult{Warnings: warnings}
 
 	maxTradeMs := maxTradeAt(buys, sells)
+	maxBillMs := maxBillAt(billHistory)
 
 	buys = aggregateBulkTrades(buys, acc.Platform, model.DirectionBuy)
 	sells = aggregateBulkTrades(sells, acc.Platform, model.DirectionSell)
@@ -77,13 +78,32 @@ func (e *Engine) SyncAccount(accountID uint) (*SyncResult, error) {
 
 	result.NewTrades = e.persistTrades(accountID, acc.Platform, buys, sells)
 
+	persistedBills := 0
+	for _, b := range billHistory {
+		rec := &model.BillRecord{
+			AccountID: accountID,
+			Platform:  acc.Platform,
+			TypeID:    b.TypeID,
+			TypeName:  b.TypeName,
+			ThisMoney: b.ThisMoney,
+			OrderNo:   b.OrderNo,
+			AddTime:   b.AddTime,
+		}
+		if err := e.orm.CreateBill(rec); err != nil {
+			e.log.Warn("create bill failed", "order_no", b.OrderNo, "err", err)
+			continue
+		}
+		persistedBills++
+	}
+	e.log.Debug("bills persisted", "count", persistedBills)
+
 	e.mu.Lock()
 	matchCount, matchErr := e.pnlSvc.RunMatching()
 	e.mu.Unlock()
 	result.NewPnl = matchCount
 	e.log.Debug("global matching completed", "matched", matchCount, "err", matchErr)
 
-	e.updateAccountMeta(accountID, balance, maxTradeMs, len(warnings) > 0)
+	e.updateAccountMeta(accountID, balance, maxTradeMs, maxBillMs, len(warnings) > 0)
 
 	e.log.Info("completed",
 		"new_trades", result.NewTrades,
@@ -123,30 +143,44 @@ func (e *Engine) createAndVerify(acc *model.Account) (platform.Client, error) {
 	return client, nil
 }
 
-// fetchData concurrently pulls buy history, sell history, and balance.
-func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
-	[]platform.TradeRecord, []platform.TradeRecord, *platform.Balance, []string,
+// fetchData concurrently pulls buy history, sell history, balance, and bill history.
+func (e *Engine) fetchData(client platform.Client, lastSyncAt, billLastSyncAt *int64) (
+	[]platform.TradeRecord, []platform.TradeRecord, *platform.Balance, []platform.BillRecord, []string,
 ) {
-	since := int64(0)
+	tradeSince := int64(0)
+	tradeSinceSec := int64(0)
 	if lastSyncAt != nil {
-		since = *lastSyncAt * 1000 // DB stores seconds, platform interface wants ms
+		tradeSinceSec = *lastSyncAt
+		tradeSince = *lastSyncAt * 1000 // DB stores seconds, platform interface wants ms
 	}
-	e.log.Debug("fetching data", "since", utils.SecondsToDateTime(since, time.DateTime))
+
+	billSince := int64(0)
+	billSinceSec := int64(0)
+	if billLastSyncAt != nil {
+		billSinceSec = *billLastSyncAt
+		billSince = *billLastSyncAt * 1000
+	}
+
+	e.log.Debug("fetching data",
+		"trade_since", utils.SecondsToDateTime(tradeSinceSec, time.DateTime),
+		"bill_since", utils.SecondsToDateTime(billSinceSec, time.DateTime),
+	)
 
 	var (
 		buys, sells []platform.TradeRecord
 		balance     *platform.Balance
+		billHistory []platform.BillRecord
 		mu          sync.Mutex
 		warnings    []string
 		wg          sync.WaitGroup
 	)
 	ctx := context.Background()
 
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
-		b, err := client.GetBuyHistory(ctx, platform.WithSince(since), platform.WithTradeState(platform.TradeStateCompleted))
+		b, err := client.GetBuyHistory(ctx, platform.WithSince(tradeSince), platform.WithTradeState(platform.TradeStateCompleted))
 		mu.Lock()
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("buy history: %v", err))
@@ -158,7 +192,7 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 
 	go func() {
 		defer wg.Done()
-		s, err := client.GetSellHistory(ctx, platform.WithSince(since), platform.WithTradeState(platform.TradeStateCompleted))
+		s, err := client.GetSellHistory(ctx, platform.WithSince(tradeSince), platform.WithTradeState(platform.TradeStateCompleted))
 		mu.Lock()
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("sell history: %v", err))
@@ -180,8 +214,20 @@ func (e *Engine) fetchData(client platform.Client, lastSyncAt *int64) (
 		mu.Unlock()
 	}()
 
+	go func() {
+		defer wg.Done()
+		b, err := client.GetBillHistory(ctx, platform.WithSince(billSince))
+		mu.Lock()
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("bill history: %v", err))
+		}
+		e.log.Debug("bill history fetched", "count", len(b), "err", err)
+		billHistory = b
+		mu.Unlock()
+	}()
+
 	wg.Wait()
-	return buys, sells, balance, warnings
+	return buys, sells, balance, billHistory, warnings
 }
 
 // persistTrades converts platform records to models and saves them.
@@ -217,8 +263,8 @@ func (e *Engine) persistTrades(accountID uint, source string, buys, sells []plat
 	return count
 }
 
-// updateAccountMeta persists balance and sync timestamp.
-func (e *Engine) updateAccountMeta(accountID uint, balance *platform.Balance, maxTradeMs int64, hasWarnings bool) {
+// updateAccountMeta persists balance, trade sync timestamp, and bill sync timestamp.
+func (e *Engine) updateAccountMeta(accountID uint, balance *platform.Balance, maxTradeMs, maxBillMs int64, hasWarnings bool) {
 	syncAt := time.Now().Unix()
 	if hasWarnings {
 		if maxTradeMs > 0 {
@@ -233,6 +279,12 @@ func (e *Engine) updateAccountMeta(accountID uint, balance *platform.Balance, ma
 			int64(balance.Instant*100), int64(balance.Purchase*100), syncAt)
 	} else {
 		_ = e.orm.UpdateAccountBalanceAndSyncTime(accountID, 0, 0, 0, 0, syncAt)
+	}
+
+	// Update bill sync time independently — only advance if we got bill records.
+	if maxBillMs > 0 {
+		billSyncAt := maxBillMs / 1000
+		_ = e.orm.UpdateAccountBillSyncTime(accountID, billSyncAt)
 	}
 }
 
@@ -316,6 +368,16 @@ func maxTradeAt(buys, sells []platform.TradeRecord) int64 {
 	for _, t := range sells {
 		if t.TradeAt > max {
 			max = t.TradeAt
+		}
+	}
+	return max
+}
+
+func maxBillAt(bills []platform.BillRecord) int64 {
+	var max int64
+	for _, b := range bills {
+		if b.AddTime > max {
+			max = b.AddTime
 		}
 	}
 	return max

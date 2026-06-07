@@ -4,6 +4,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/CsJsss/CS2Ledger/pkg/service/account"
+	"github.com/CsJsss/CS2Ledger/pkg/service/bill"
 	"github.com/CsJsss/CS2Ledger/pkg/service/inventory"
 	"github.com/CsJsss/CS2Ledger/pkg/service/market"
 	"github.com/CsJsss/CS2Ledger/pkg/service/pnl"
@@ -14,6 +15,7 @@ import (
 
 type Service struct {
 	acc account.AccountInterface
+	b   bill.BillInterface
 	trd trade.TradeInterface
 	inv inventory.InventoryInterface
 	p   pnl.PnlInterface
@@ -24,6 +26,7 @@ type Service struct {
 
 func New(
 	acc account.AccountInterface,
+	b bill.BillInterface,
 	trd trade.TradeInterface,
 	inv inventory.InventoryInterface,
 	p pnl.PnlInterface,
@@ -33,6 +36,7 @@ func New(
 ) *Service {
 	s := &Service{
 		acc: acc,
+		b:   b,
 		trd: trd,
 		inv: inv,
 		p:   p,
@@ -48,6 +52,7 @@ func New(
 }
 
 func (s *Service) Account() account.AccountInterface       { return s.acc }
+func (s *Service) Bill() bill.BillInterface                { return s.b }
 func (s *Service) Trade() trade.TradeInterface             { return s.trd }
 func (s *Service) Inventory() inventory.InventoryInterface { return s.inv }
 func (s *Service) Pnl() pnl.PnlInterface                   { return s.p }

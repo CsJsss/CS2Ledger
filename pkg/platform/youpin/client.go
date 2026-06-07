@@ -191,21 +191,17 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 		return nil, false, err
 	}
 
-	var result youpinBuyPageResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	data, err := parseYoupin[youpinBuyPageData](respBody)
+	if err != nil {
 		c.Log.Warn("youpin buy page failed", "page", page, "err", err)
 		return nil, false, err
 	}
-	if result.Code != 0 {
-		c.Log.Warn("youpin buy page: API error", "code", result.Code)
-		return nil, false, fmt.Errorf("youpin API error: code=%d", result.Code)
-	}
 
-	c.Log.Debug("youpin buy page", "page", page, "orders", len(result.Data.OrderList), "totalCount", result.Data.TotalCount)
+	c.Log.Debug("youpin buy page", "page", page, "orders", len(data.OrderList), "totalCount", data.TotalCount)
 
-	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
+	trades := make([]platform.TradeRecord, 0, len(data.OrderList))
 	finished := false
-	for _, o := range result.Data.OrderList {
+	for _, o := range data.OrderList {
 		if tradeState == platform.TradeStateCompleted && o.OrderStatusName != "已完成" {
 			continue
 		}
@@ -227,14 +223,11 @@ func (c *Client) fetchBuyPage(ctx context.Context, page int, since int64, tradeS
 		}
 	}
 
-	if len(result.Data.OrderList) == 0 || finished {
+	if len(data.OrderList) == 0 || finished {
 		return trades, false, nil
 	}
-	// API may return null total; fall back to page-full heuristic.
-	if result.Data.TotalCount > 0 {
-		return trades, page*DefaultPageSize < result.Data.TotalCount, nil
-	}
-	return trades, len(result.Data.OrderList) == DefaultPageSize, nil
+	// API may return null total
+	return trades, len(data.OrderList) == DefaultPageSize, nil
 }
 
 func (c *Client) fetchBuyBatch(ctx context.Context, orderNo string, buyerUserID int64, finishTime int64) ([]platform.TradeRecord, error) {
@@ -346,21 +339,17 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		return nil, false, err
 	}
 
-	var result youpinSellPageResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
+	data, err := parseYoupin[youpinSellPageData](respBody)
+	if err != nil {
 		c.Log.Warn("youpin sell page failed", "page", page, "err", err)
 		return nil, false, err
 	}
-	if result.Code != 0 {
-		c.Log.Warn("youpin sell page: API error", "code", result.Code)
-		return nil, false, fmt.Errorf("youpin API error: code=%d", result.Code)
-	}
 
-	c.Log.Debug("youpin sell page", "page", page, "orders", len(result.Data.OrderList), "totalCount", result.Data.TotalCount)
+	c.Log.Debug("youpin sell page", "page", page, "orders", len(data.OrderList), "totalCount", data.TotalCount)
 
-	trades := make([]platform.TradeRecord, 0, len(result.Data.OrderList))
+	trades := make([]platform.TradeRecord, 0, len(data.OrderList))
 	finished := false
-	for _, o := range result.Data.OrderList {
+	for _, o := range data.OrderList {
 		if tradeState == platform.TradeStateCompleted && o.OrderStatusName != "已完成" {
 			continue
 		}
@@ -371,11 +360,11 @@ func (c *Client) fetchSellPage(ctx context.Context, page int, since int64, trade
 		trades = append(trades, toSellTrade(o))
 	}
 
-	if len(result.Data.OrderList) == 0 || finished {
+	if len(data.OrderList) == 0 || finished {
 		return trades, false, nil
 	}
 	// API may return null total
-	return trades, len(result.Data.OrderList) == DefaultPageSize, nil
+	return trades, len(data.OrderList) == DefaultPageSize, nil
 }
 
 func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
@@ -418,6 +407,73 @@ func (c *Client) GetBalance(ctx context.Context) (*platform.Balance, error) {
 		Instant:   instant,
 		Purchase:  purchase,
 	}, nil
+}
+
+func (c *Client) GetBillHistory(ctx context.Context, opts ...platform.QueryOption) ([]platform.BillRecord, error) {
+	c.registerDevice()
+	cfg := platform.ApplyQueryOpts(opts)
+	c.Log.Debug("youpin: fetching bill history", "since", cfg.Since, "page", cfg.Page, "pageSize", cfg.PageSize)
+
+	// Single-page mode
+	if cfg.Page > 0 {
+		records, _, err := c.fetchBillPage(ctx, cfg.Page, cfg.Since, cfg.PageSize)
+		return records, err
+	}
+
+	bills, err := platform.FetchAllPages(ctx, c.Log, c.Name, "bill", 1*time.Second, cfg.Limit,
+		func(ctx context.Context, page int) ([]platform.BillRecord, bool, error) {
+			return c.fetchBillPage(ctx, page, cfg.Since, cfg.PageSize)
+		},
+	)
+	if err != nil {
+		return bills, err
+	}
+	c.Log.Info("youpin: bill history done", "total", len(bills))
+	return bills, nil
+}
+
+func (c *Client) fetchBillPage(ctx context.Context, page int, since int64, pageSize int) ([]platform.BillRecord, bool, error) {
+	if pageSize <= 0 {
+		pageSize = DefaultPageSize
+	}
+	body := map[string]any{
+		"pageIndex": page,
+		"pageSize":  pageSize,
+		"Sessionid": c.deviceID,
+	}
+	_, respBody, err := c.doRequest(ctx, "POST", "/api/youpin/bff/payment/v1/user/userAssets/query/page/v2", nil, body)
+	if err != nil {
+		return nil, false, err
+	}
+
+	data, err := parseYoupin[youpinBillPageData](respBody)
+	if err != nil {
+		c.Log.Warn("youpin bill page failed", "page", page, "err", err, "body", string(respBody))
+		return nil, false, err
+	}
+
+	c.Log.Debug("youpin bill page", "page", page, "items", len(data.DataList), "total", data.Total)
+
+	records := make([]platform.BillRecord, 0, len(data.DataList))
+	finished := false
+	for _, item := range data.DataList {
+		rec, err := toBillRecord(item)
+		if err != nil {
+			c.Log.Warn("youpin: bill item parse failed, skipping", "err", err)
+			continue
+		}
+		if rec.AddTime < since {
+			finished = true
+			continue
+		}
+		records = append(records, rec)
+	}
+
+	if len(data.DataList) == 0 || finished {
+		return records, false, nil
+	}
+	// API may return null total
+	return records, len(data.DataList) == pageSize, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -474,6 +530,20 @@ func (c *Client) headers() http.Header {
 	)
 	h.Set("Device-Info", deviceInfo)
 	return h
+}
+
+// parseYoupin unmarshals a youpinResponse envelope and checks Code.
+func parseYoupin[T any](body []byte) (T, error) {
+	var result youpinResponse[T]
+	if err := json.Unmarshal(body, &result); err != nil {
+		var zero T
+		return zero, err
+	}
+	if result.Code != 0 {
+		var zero T
+		return zero, fmt.Errorf("youpin API error: code=%d msg=%s", result.Code, result.Msg)
+	}
+	return result.Data, nil
 }
 
 // checkAPIError checks for known YouPin error codes in the response.

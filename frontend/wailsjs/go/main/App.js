@@ -14,6 +14,14 @@ export function GetAccounts() {
   return window['go']['main']['App']['GetAccounts']();
 }
 
+export function GetBillChartData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetBillChartData'](arg1, arg2, arg3);
+}
+
+export function GetBillRecords(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['GetBillRecords'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function GetCompletedTrades(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetCompletedTrades'](arg1, arg2, arg3, arg4, arg5);
 }

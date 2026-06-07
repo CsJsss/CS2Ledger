@@ -1,5 +1,7 @@
 package platform
 
+//go:generate go tool mockery
+
 import (
 	"context"
 
@@ -48,11 +50,24 @@ type Balance struct {
 	Instant   float64 // 秒到账余额
 }
 
+// BillRecord is a unified bill/transaction record returned by platform clients.
+// ThisMoney is in cents; positive = income, negative = expense.
+// AddTime is a unix millisecond timestamp.
+type BillRecord struct {
+	TypeName  string
+	TypeID    int
+	ThisMoney int64
+	OrderNo   string
+	AddTime   int64
+}
+
 // QueryConfig holds optional parameters for history queries.
 type QueryConfig struct {
 	Since       int64             // unix ms, 0 = no filter
 	Limit       int               // max records, 0 = no limit
 	TradeState  TradeState        // order completion filter, default = all
+	Page        int               // single page to fetch, 0 = all pages
+	PageSize    int               // page size, 0 = platform default
 	ExtraParams map[string]string // merged into HTTP request params
 }
 
@@ -81,6 +96,16 @@ func WithLimit(limit int) QueryOption {
 	return func(c *QueryConfig) { c.Limit = limit }
 }
 
+// WithPage fetches a single page (1-based). 0 = fetch all pages.
+func WithPage(page int) QueryOption {
+	return func(c *QueryConfig) { c.Page = page }
+}
+
+// WithPageSize sets the page size for paginated requests.
+func WithPageSize(pageSize int) QueryOption {
+	return func(c *QueryConfig) { c.PageSize = pageSize }
+}
+
 func ApplyQueryOpts(opts []QueryOption) QueryConfig {
 	cfg := QueryConfig{}
 	for _, o := range opts {
@@ -90,9 +115,13 @@ func ApplyQueryOpts(opts []QueryOption) QueryConfig {
 }
 
 // Client is the interface all platform clients must implement.
+//
+//mockery:generate: true
+//mockery:filename: client_mock_test.go
 type Client interface {
 	Verify(ctx context.Context) error
 	GetBuyHistory(ctx context.Context, opts ...QueryOption) ([]TradeRecord, error)
 	GetSellHistory(ctx context.Context, opts ...QueryOption) ([]TradeRecord, error)
 	GetBalance(ctx context.Context) (*Balance, error)
+	GetBillHistory(ctx context.Context, opts ...QueryOption) ([]BillRecord, error)
 }

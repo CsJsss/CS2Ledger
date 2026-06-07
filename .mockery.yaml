@@ -1,0 +1,5 @@
+template: testify
+force-file-write: true
+formatter: goimports
+packages:
+  github.com/CsJsss/CS2Ledger/pkg/platform: {}

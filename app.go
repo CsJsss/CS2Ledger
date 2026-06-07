@@ -6,6 +6,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
 	"github.com/CsJsss/CS2Ledger/pkg/service"
+	"github.com/CsJsss/CS2Ledger/pkg/service/bill"
 	"github.com/CsJsss/CS2Ledger/pkg/service/inventory"
 	"github.com/CsJsss/CS2Ledger/pkg/service/market"
 	"github.com/CsJsss/CS2Ledger/pkg/service/pnl"
@@ -189,12 +190,47 @@ func (a *App) GetDashboardSummary() (*DashboardSummary, error) {
 			ds.CompletedTrades += summary.TotalTrades
 			ds.RealizedPl += summary.TotalNetPl
 		}
+		// Rental income from bill records: 租金 + 续租 - 服务费
+		rentalIncome, _ := a.svc.Bill().SumRentalIncome(acc.ID)
+		ds.TotalRentalIncome += rentalIncome
 	}
 	return ds, nil
 }
 
 func (a *App) GetRentalHistory(accountID uint, assetID string) ([]model.RentalRecord, error) {
 	return a.svc.Rental().ListByAsset(accountID, assetID)
+}
+
+func (a *App) GetBillRecords(accountID uint, page, pageSize int, typeID int, platform string, startTime, endTime int64) (*bill.PaginatedBills, error) {
+	return a.svc.Bill().List(accountID, page, pageSize, bill.BillFilter{
+		TypeID:    typeID,
+		Platform:  platform,
+		StartTime: startTime,
+		EndTime:   endTime,
+	})
+}
+
+// DailyBillPoint is pre-aggregated daily bill totals for charts.
+type DailyBillPoint struct {
+	Date      string `json:"date"` // "2006-01-02"
+	TypeID    int    `json:"typeId"`
+	ThisMoney int64  `json:"thisMoney"`
+}
+
+// GetBillChartData returns daily-aggregated bill data for chart rendering.
+func (a *App) GetBillChartData(accountID uint, startTime, endTime int64) ([]DailyBillPoint, error) {
+	rows, err := a.svc.Bill().ChartData(accountID, bill.BillFilter{
+		StartTime: startTime,
+		EndTime:   endTime,
+	})
+	if err != nil {
+		return nil, err
+	}
+	points := make([]DailyBillPoint, len(rows))
+	for i, r := range rows {
+		points[i] = DailyBillPoint{Date: r.Date, TypeID: r.TypeID, ThisMoney: r.ThisMoney}
+	}
+	return points, nil
 }
 
 type UserSettings struct {

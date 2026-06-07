@@ -37,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(balanceCmd)
 	rootCmd.AddCommand(buyhistoryCmd)
 	rootCmd.AddCommand(sellhistoryCmd)
+	rootCmd.AddCommand(billhistoryCmd)
 }
 
 func Execute() {

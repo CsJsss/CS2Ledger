@@ -2,6 +2,13 @@ package youpin
 
 import "encoding/json"
 
+// youpinResponse is a generic envelope for YouPin API responses.
+type youpinResponse[T any] struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data T      `json:"data"`
+}
+
 type youpinBuyProduct struct {
 	AssertID          int64       `json:"assertId"`
 	CommodityID       int64       `json:"commodityId"`
@@ -29,13 +36,10 @@ type youpinBuyOrder struct {
 	ProductList     []youpinBuyProduct `json:"productDetailList"`
 }
 
-type youpinBuyPageResponse struct {
-	Code int `json:"code"`
-	Data struct {
-		OrderList   []youpinBuyOrder `json:"orderList"`
-		TotalCount  int              `json:"total"`
-		OrderRevert any              `json:"orderRevertInfo"`
-	} `json:"data"`
+type youpinBuyPageData struct {
+	OrderList   []youpinBuyOrder `json:"orderList"`
+	TotalCount  int              `json:"total"`
+	OrderRevert any              `json:"orderRevertInfo"`
 }
 
 type youpinSellOrder struct {
@@ -63,13 +67,10 @@ type youpinSellOrder struct {
 	} `json:"productDetail"`
 }
 
-type youpinSellPageResponse struct {
-	Code int `json:"code"`
-	Data struct {
-		OrderList   []youpinSellOrder `json:"orderList"`
-		TotalCount  int               `json:"total"`
-		OrderRevert any               `json:"orderRevertInfo"`
-	} `json:"data"`
+type youpinSellPageData struct {
+	OrderList   []youpinSellOrder `json:"orderList"`
+	TotalCount  int               `json:"total"`
+	OrderRevert any               `json:"orderRevertInfo"`
 }
 
 // --- Balance ---
@@ -118,4 +119,19 @@ type youpinBalanceListItem struct {
 	QuestionDesc       string `json:"questionDesc"`
 	Type               int    `json:"type"`
 	BalanceType        int    `json:"balanceType"`
+}
+
+// --- Bill / Fund Flow ---
+
+type youpinBillItem struct {
+	TypeID    int    `json:"typeId"`
+	TypeName  string `json:"typeName"`
+	ThisMoney string `json:"thisMoney"` // 元, e.g. "-426.00"
+	OrderNo   string `json:"orderNo"`
+	AddTime   string `json:"addTime"` // "2026-05-17 11:49:30"
+}
+
+type youpinBillPageData struct {
+	Total    int              `json:"total"`
+	DataList []youpinBillItem `json:"dataList"`
 }
