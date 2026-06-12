@@ -49,6 +49,7 @@ import { useDailySells } from '../hooks/useDailySells';
 import { useExpandableSet } from '../hooks/useExpandableSet';
 import { useUIStore } from '../store/uiStore';
 import { formatCNY, plHexColor } from '../lib/format';
+import { platformLabel } from '../lib/constants';
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime';
 import type { model, trade } from '../lib/wails';
 
@@ -1225,8 +1226,8 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Typography variant="body2" color="text.secondary">
           共卖出 <b>{totalCount}</b> 件 · 总利润{' '}
-          <b style={{ color: plHexColor(totalProfit) }}>{formatCNY(totalProfit)}</b>{' '}
-          · 总手续费 {formatCNY(totalFee)}
+          <b style={{ color: plHexColor(totalProfit) }}>{formatCNY(totalProfit)}</b> · 总手续费{' '}
+          {formatCNY(totalFee)}
         </Typography>
       </Box>
 
@@ -1266,7 +1267,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                             <Typography variant="body2" fontWeight={700}>
                               {(() => {
                                 const d = new Date(group.date);
-                                return `${d.getMonth() + 1}月${d.getDate()}日`;
+                                return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
                               })()}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -1277,15 +1278,23 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                             <Typography variant="body2" fontWeight={600}>
                               卖出 {group.totalCount} 件
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              利润{' '}
-                              <span
-                                style={{ color: plHexColor(group.totalProfit), fontWeight: 600 }}
-                              >
-                                {formatCNY(group.totalProfit)}
-                              </span>{' '}
-                              · 手续费 {formatCNY(group.totalFee)}
-                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                              <Typography variant="body2">
+                                利润{' '}
+                                <span style={{ color: plHexColor(group.totalProfit), fontWeight: 600 }}>
+                                  {formatCNY(group.totalProfit)}
+                                </span>
+                              </Typography>
+                              <Typography variant="body2">
+                                手续费 {formatCNY(group.totalFee)}
+                              </Typography>
+                              <Typography variant="body2">
+                                净利{' '}
+                                <span style={{ color: plHexColor(group.totalProfit - group.totalFee), fontWeight: 600 }}>
+                                  {formatCNY(group.totalProfit - group.totalFee)}
+                                </span>
+                              </Typography>
+                            </Box>
                           </TableCell>
                         </TableRow>
                         <TableRow sx={{ '& td': { border: 0 } }}>
@@ -1394,7 +1403,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                           </TableCell>
                                           <TableCell sx={{ py: 0.5 }}>
                                             <Typography variant="body2" color="text.secondary">
-                                              {item.platform}
+                                              {platformLabel[item.platform] ?? item.platform}
                                             </Typography>
                                           </TableCell>
                                         </TableRow>

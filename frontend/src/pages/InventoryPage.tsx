@@ -340,7 +340,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                             <Typography variant="body2" fontWeight={700}>
                               {(() => {
                                 const d = new Date(group.date);
-                                return `${d.getMonth() + 1}月${d.getDate()}日`;
+                                return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
                               })()}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -351,47 +351,72 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                             <Typography variant="body2" fontWeight={600}>
                               买入 {group.totalCount} 件
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              成本 {formatCNY(group.totalCost)}
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                              <Typography variant="body2">
+                                成本 {formatCNY(group.totalCost)}
+                              </Typography>
                               {group.totalMarketValue != null ? (
-                                <span>
-                                  {' '}
-                                  · 当前市值{' '}
-                                  <span
-                                    style={{
-                                      color: plHexColor(group.totalMarketValue - group.totalCost),
-                                    }}
-                                  >
-                                    {formatCNY(group.totalMarketValue)}
-                                  </span>{' '}
-                                  · 浮动盈亏{' '}
-                                  <span
-                                    style={{
-                                      color: plHexColor(group.totalMarketValue - group.totalCost),
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {formatCNY(group.totalMarketValue - group.totalCost)}
-                                  </span>
+                                <>
+                                  <Typography variant="body2">
+                                    市值{' '}
+                                    <span
+                                      style={{
+                                        color: plHexColor(
+                                          group.totalMarketValue - group.totalCost,
+                                        ),
+                                      }}
+                                    >
+                                      {formatCNY(group.totalMarketValue)}
+                                    </span>
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    浮动盈亏{' '}
+                                    <span
+                                      style={{
+                                        color: plHexColor(
+                                          group.totalMarketValue - group.totalCost,
+                                        ),
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {formatCNY(
+                                        group.totalMarketValue - group.totalCost,
+                                      )}
+                                    </span>
+                                  </Typography>
                                   {group.totalCost > 0 && (
-                                    <span>
-                                      {' '}
-                                      · 盈亏率{' '}
+                                    <Typography variant="body2">
+                                      盈亏率{' '}
                                       <span
                                         style={{
                                           color: plHexColor(
-                                            ((group.totalMarketValue - group.totalCost) / group.totalCost) * 100,
+                                            ((group.totalMarketValue -
+                                              group.totalCost) /
+                                              group.totalCost) *
+                                              100,
                                           ),
                                         }}
                                       >
-                                        {(((group.totalMarketValue - group.totalCost) / group.totalCost) * 100) >= 0 ? '+' : ''}
-                                        {(((group.totalMarketValue - group.totalCost) / group.totalCost) * 100).toFixed(1)}%
+                                        {((group.totalMarketValue -
+                                          group.totalCost) /
+                                          group.totalCost) *
+                                          100 >=
+                                        0
+                                          ? '+'
+                                          : ''}
+                                        {(
+                                          ((group.totalMarketValue -
+                                            group.totalCost) /
+                                            group.totalCost) *
+                                          100
+                                        ).toFixed(1)}
+                                        %
                                       </span>
-                                    </span>
+                                    </Typography>
                                   )}
-                                </span>
+                                </>
                               ) : null}
-                            </Typography>
+                            </Box>
                           </TableCell>
                         </TableRow>
                         <TableRow sx={{ '& td': { border: 0 } }}>
@@ -527,7 +552,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                           </TableCell>
                                           <TableCell sx={{ py: 0.5 }}>
                                             <Typography variant="body2" color="text.secondary">
-                                              {item.platform}
+                                              {platformLabel[item.platform] ?? item.platform}
                                             </Typography>
                                           </TableCell>
                                           <TableCell sx={{ py: 0.5 }}>
