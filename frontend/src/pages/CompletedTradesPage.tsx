@@ -1180,8 +1180,14 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
-  const { data: groups = [], isLoading, error, refetch } = useDailySells(accountId, year, month);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 30;
+
+  const { data: paginated, isLoading, error, refetch } = useDailySells(accountId, year, month, page + 1, PAGE_SIZE);
   const { isExpanded, toggle } = useExpandableSet();
+
+  const groups = paginated?.groups ?? [];
+  const totalGroups = paginated?.total ?? 0;
 
   const totalProfit = groups.reduce((s, g) => s + g.totalProfit, 0);
   const totalFee = groups.reduce((s, g) => s + g.totalFee, 0);
@@ -1190,12 +1196,18 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
   const monthLabel = `${year}年${month}月`;
 
   const handlePrevMonth = () => {
-    if (month === 1) { setYear(year - 1); setMonth(12); }
-    else setMonth(month - 1);
+    setPage(0);
+    if (month === 1) {
+      setYear(year - 1);
+      setMonth(12);
+    } else setMonth(month - 1);
   };
   const handleNextMonth = () => {
-    if (month === 12) { setYear(year + 1); setMonth(1); }
-    else setMonth(month + 1);
+    setPage(0);
+    if (month === 12) {
+      setYear(year + 1);
+      setMonth(1);
+    } else setMonth(month + 1);
   };
 
   if (isLoading) {
@@ -1213,7 +1225,10 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
       <Box mt={3}>
         <ErrorBanner
           message={`加载每日卖出数据失败: ${String(error)}`}
-          onRetry={() => { setDismissed(false); void refetch(); }}
+          onRetry={() => {
+            setDismissed(false);
+            void refetch();
+          }}
           onDismiss={() => setDismissed(true)}
         />
       </Box>
@@ -1232,8 +1247,8 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
         </IconButton>
         <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
           共卖出 <b>{totalCount}</b> 件 · 总利润{' '}
-          <b style={{ color: plHexColor(totalProfit) }}>{formatCNY(totalProfit)}</b>{' '}
-          · 总手续费 {formatCNY(totalFee)}
+          <b style={{ color: plHexColor(totalProfit) }}>{formatCNY(totalProfit)}</b> · 总手续费{' '}
+          {formatCNY(totalFee)}
         </Typography>
       </Box>
 
@@ -1246,17 +1261,18 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
       )}
 
       {groups.length > 0 && (
-        <Paper>
-          <TableContainer>
-            <Table size="small">
-              <TableBody>
-                {groups.map((group) => {
-                  const expanded = isExpanded(group.date);
-                  return (
-                    <React.Fragment key={group.date}>
-                      <TableRow
-                        hover
-                        sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
+        <React.Fragment>
+          <Paper>
+            <TableContainer>
+              <Table size="small">
+                <TableBody>
+                  {groups.map((group) => {
+                    const expanded = isExpanded(group.date);
+                    return (
+                      <React.Fragment key={group.date}>
+                        <TableRow
+                          hover
+                          sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
                         onClick={() => toggle(group.date)}
                       >
                         <TableCell sx={{ py: 1, width: 40 }}>
@@ -1270,7 +1286,10 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                         </TableCell>
                         <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
                           <Typography variant="body2" fontWeight={700}>
-                            {new Date(group.date).getDate()}
+                            {(() => {
+                              const d = new Date(group.date);
+                              return `${d.getMonth() + 1}月${d.getDate()}日`;
+                            })()}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {group.dayOfWeek}
@@ -1296,22 +1315,37 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                               <Table size="small">
                                 <TableHead>
                                   <TableRow>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>物品</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">数量</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">买入价</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">卖出价</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">手续费</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">利润</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">利润率</TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>平台</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                      物品
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      数量
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      买入价
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      卖出价
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      手续费
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      利润
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
+                                      利润率
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                      平台
+                                    </TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
                                   {group.items.map((item, idx) => {
                                     const costBasis = item.buyPrice * item.quantity;
-                                    const profitRate = costBasis > 0
-                                      ? (item.profit / costBasis) * 100
-                                      : 0;
+                                    const profitRate =
+                                      costBasis > 0 ? (item.profit / costBasis) * 100 : 0;
                                     return (
                                       <TableRow key={`${group.date}-${idx}`} hover>
                                         <TableCell sx={{ py: 0.5 }}>
@@ -1356,7 +1390,8 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                             color={plHexColor(profitRate)}
                                             className="mono-num"
                                           >
-                                            {profitRate >= 0 ? '+' : ''}{profitRate.toFixed(1)}%
+                                            {profitRate >= 0 ? '+' : ''}
+                                            {profitRate.toFixed(1)}%
                                           </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 0.5 }}>
@@ -1389,6 +1424,18 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
             </Table>
           </TableContainer>
         </Paper>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <TablePagination
+            component="div"
+            count={totalGroups}
+            page={page}
+            rowsPerPage={PAGE_SIZE}
+            onPageChange={(_, p) => setPage(p)}
+            rowsPerPageOptions={[30]}
+            labelRowsPerPage="每页"
+          />
+        </Box>
+        </React.Fragment>
       )}
     </Box>
   );
