@@ -30,6 +30,14 @@ export function GetCompletedTradesSummary(arg1) {
   return window['go']['main']['App']['GetCompletedTradesSummary'](arg1);
 }
 
+export function GetDailyBuys(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetDailyBuys'](arg1, arg2, arg3);
+}
+
+export function GetDailySells(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetDailySells'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function GetDashboardSummary() {
   return window['go']['main']['App']['GetDashboardSummary']();
 }

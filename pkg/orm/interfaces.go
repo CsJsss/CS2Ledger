@@ -31,6 +31,7 @@ type TradeInterface interface {
 	FindCompletedTradeGroupKeys(accountID uint, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
 	FindSellsByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.TradeRecord, error)
 	FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
+	FindDailySells(accountID uint, year, month int) ([]DailySellRow, error)
 }
 
 type InventoryGroupKey struct {
@@ -45,6 +46,7 @@ type InventoryInterface interface {
 	FindInventoryByAssetID(accountID uint, assetID string) (*model.InventoryItem, error)
 	FindInventoryGroupKeys(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
 	FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error)
+	FindDailyBuys(accountID uint) ([]DailyBuyRow, error)
 }
 
 type PnlInterface interface {

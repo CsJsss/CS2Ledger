@@ -9,6 +9,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/orm"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
+	"github.com/CsJsss/CS2Ledger/pkg/utils/dateutil"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
@@ -69,6 +70,7 @@ type InventoryInterface interface {
 	List(accountID uint, status string) ([]model.InventoryItem, error)
 	GetItemDetail(accountID uint, assetID string) (*ItemDetail, error)
 	ListGroups(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error)
+	ListDailyBuys(accountID uint, page, pageSize int) (*DailyBuyPaginated, error)
 	SetPriceProvider(p PriceProvider)
 	SetPriceSource(source string)
 }
@@ -97,6 +99,32 @@ func (s *service) SetPriceProvider(p PriceProvider) {
 // SetPriceSource sets which price to use (buff/youpin/steam).
 func (s *service) SetPriceSource(source string) {
 	s.priceSource = source
+}
+
+// resolvePriceMap fetches market prices and returns a map from MarketHashName to price in fen.
+// Returns nil if prices are unavailable (best-effort).
+func (s *service) resolvePriceMap() map[string]int64 {
+	if s.prices == nil {
+		return nil
+	}
+	priceList, err := s.prices.GetAllPrices()
+	if err != nil {
+		return nil
+	}
+	priceMap := make(map[string]int64, len(priceList))
+	for _, p := range priceList {
+		var mp int64
+		switch s.priceSource {
+		case "youpin":
+			mp = int64(p.YoupinPrice * 100)
+		case "steam":
+			mp = int64(p.SteamPrice * 100)
+		default:
+			mp = int64(p.BuffPrice * 100)
+		}
+		priceMap[p.MarketHashName] = mp
+	}
+	return priceMap
 }
 
 func (s *service) List(accountID uint, status string) ([]model.InventoryItem, error) {
@@ -293,6 +321,123 @@ func (s *service) sortGroups(groups []InventoryGroup, sortBy, sortDir string) {
 	})
 }
 
+func (s *service) ListDailyBuys(accountID uint, page, pageSize int) (*DailyBuyPaginated, error) {
+	rows, err := s.orm.FindDailyBuys(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	priceMap := s.resolvePriceMap()
+
+	type dateKey string
+	byDate := make(map[dateKey][]DailyBuyItem)
+	for _, r := range rows {
+		date, _ := dateutil.FormatTimestamp(r.BuyAt)
+		dk := dateKey(date)
+		totalCost := r.BuyPrice * r.Quantity
+		item := DailyBuyItem{
+			ItemName:  r.ItemName,
+			Exterior:  r.Exterior,
+			Quantity:  r.Quantity,
+			BuyPrice:  r.BuyPrice,
+			TotalCost: totalCost,
+			Platform:  r.Source,
+			Status:    r.Status,
+		}
+		if priceMap != nil {
+			if mp, ok := priceMap[r.MarketHashName]; ok {
+				item.MarketPrice = &mp
+				upl := (mp - r.BuyPrice) * r.Quantity
+				item.UnrealizedPl = &upl
+			}
+		}
+		byDate[dk] = append(byDate[dk], item)
+	}
+
+	groups := make([]DailyBuyGroup, 0, len(byDate))
+	for dk, items := range byDate {
+		var totalCost int64
+		var totalMV int64
+		hasMV := true
+		for _, it := range items {
+			totalCost += it.TotalCost
+			if it.MarketPrice != nil {
+				totalMV += *it.MarketPrice * it.Quantity
+			} else {
+				hasMV = false
+			}
+		}
+		t, _ := dateutil.ParseDate(string(dk))
+		g := DailyBuyGroup{
+			Date:       string(dk),
+			DayOfWeek:  dateutil.DayOfWeekNames[t.Weekday()],
+			Items:      items,
+			TotalCount: len(items),
+			TotalCost:  totalCost,
+		}
+		if hasMV && len(items) > 0 {
+			g.TotalMarketValue = &totalMV
+		}
+		groups = append(groups, g)
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].Date > groups[j].Date })
+
+	// Group by month
+	type monthKey string
+	byMonth := make(map[monthKey][]DailyBuyGroup)
+	for _, g := range groups {
+		mk := monthKey(g.Date[:7])
+		byMonth[mk] = append(byMonth[mk], g)
+	}
+
+	// Build month groups
+	months := make([]DailyBuyMonthGroup, 0, len(byMonth))
+	for mk, dayGroups := range byMonth {
+		var tc int64
+		var totalCost int64
+		var totalMV int64
+		hasMV := true
+		for _, dg := range dayGroups {
+			tc += int64(dg.TotalCount)
+			totalCost += dg.TotalCost
+			if dg.TotalMarketValue != nil {
+				totalMV += *dg.TotalMarketValue
+			} else {
+				hasMV = false
+			}
+		}
+		mg := DailyBuyMonthGroup{
+			Month:      string(mk),
+			DayGroups:  dayGroups,
+			TotalCount: int(tc),
+			TotalCost:  totalCost,
+		}
+		if hasMV {
+			mg.TotalMarketValue = &totalMV
+		}
+		months = append(months, mg)
+	}
+	sort.Slice(months, func(i, j int) bool { return months[i].Month > months[j].Month })
+
+	// Paginate by months
+	total := int64(len(months))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 12
+	}
+	offset := (page - 1) * pageSize
+	if offset >= len(months) {
+		return &DailyBuyPaginated{Months: nil, Total: total, Page: page, PageSize: pageSize}, nil
+	}
+	end := offset + pageSize
+	if end > len(months) {
+		end = len(months)
+	}
+	return &DailyBuyPaginated{Months: months[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
+}
+
 func (s *service) GetItemDetail(accountID uint, assetID string) (*ItemDetail, error) {
 	item, err := s.orm.FindInventoryByAssetID(accountID, assetID)
 	if err != nil || item == nil {
@@ -331,6 +476,42 @@ type RentalSummary struct {
 	TotalDays   int64 `json:"totalDays"`
 	TotalIncome int64 `json:"totalIncome"`
 	RentCount   int   `json:"rentCount"`
+}
+
+type DailyBuyItem struct {
+	ItemName     string `json:"itemName"`
+	Exterior     string `json:"exterior"`
+	Quantity     int64  `json:"quantity"`
+	BuyPrice     int64  `json:"buyPrice"`
+	TotalCost    int64  `json:"totalCost"`
+	MarketPrice  *int64 `json:"marketPrice,omitempty"`
+	UnrealizedPl *int64 `json:"unrealizedPl,omitempty"`
+	Platform     string `json:"platform"`
+	Status       string `json:"status"`
+}
+
+type DailyBuyGroup struct {
+	Date             string         `json:"date"`
+	DayOfWeek        string         `json:"dayOfWeek"`
+	Items            []DailyBuyItem `json:"items"`
+	TotalCount       int            `json:"totalCount"`
+	TotalCost        int64          `json:"totalCost"`
+	TotalMarketValue *int64         `json:"totalMarketValue,omitempty"`
+}
+
+type DailyBuyMonthGroup struct {
+	Month            string          `json:"month"`
+	DayGroups        []DailyBuyGroup `json:"dayGroups"`
+	TotalCount       int             `json:"totalCount"`
+	TotalCost        int64           `json:"totalCost"`
+	TotalMarketValue *int64          `json:"totalMarketValue,omitempty"`
+}
+
+type DailyBuyPaginated struct {
+	Months   []DailyBuyMonthGroup `json:"months"`
+	Total    int64                `json:"total"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"pageSize"`
 }
 
 var Module = fx.Module("inventory",

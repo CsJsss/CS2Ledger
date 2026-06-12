@@ -10,6 +10,19 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 )
 
+// DailyBuyRow is a denormalized row for daily-buy queries, assembled from an inventory item and its buy trade.
+type DailyBuyRow struct {
+	ItemName       string
+	Exterior       string
+	Quantity       int64
+	BuyPrice       int64
+	BuyAt          int64
+	Source         string
+	Status         string
+	MarketHashName string
+	CsqaqGoodsID   int
+}
+
 func (o *ormImpl) UpsertInventory(item *model.InventoryItem) error {
 	return o.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "account_id"}, {Name: "asset_id"}},
@@ -82,6 +95,39 @@ func (o *ormImpl) FindInventoryGroupKeys(accountID uint, status, weaponType stri
 
 // FindInventoryByGroupKeys returns inventory items matching the given (item_name, exterior) pairs.
 // Pass accountID=0 to query across all accounts.
+func (o *ormImpl) FindDailyBuys(accountID uint) ([]DailyBuyRow, error) {
+	q := o.db.Model(&model.InventoryItem{}).
+		Where("status IN ?", []string{model.InventoryStatusInInventory, model.InventoryStatusListed}).
+		Preload("BuyTrade")
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	}
+
+	var items []model.InventoryItem
+	if err := q.Order("updated_at DESC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+
+	rows := make([]DailyBuyRow, 0, len(items))
+	for _, it := range items {
+		if it.BuyTrade == nil {
+			continue
+		}
+		rows = append(rows, DailyBuyRow{
+			ItemName:       it.ItemName,
+			Exterior:       it.Exterior,
+			Quantity:       it.Quantity,
+			BuyPrice:       it.BuyTrade.UnitPrice,
+			BuyAt:          it.BuyTrade.TradeAt,
+			Source:         it.BuyTrade.Source,
+			Status:         it.Status,
+			MarketHashName: it.MarketHashName,
+			CsqaqGoodsID:   it.CsqaqGoodsID,
+		})
+	}
+	return rows, nil
+}
+
 func (o *ormImpl) FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error) {
 	if len(keys) == 0 {
 		return nil, nil
