@@ -336,7 +336,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                               )}
                             </IconButton>
                           </TableCell>
-                          <TableCell sx={{ py: 1, width: 140, textAlign: 'center' }}>
+                          <TableCell sx={{ py: 1, width: 200, textAlign: 'center' }}>
                             <Typography variant="body2" fontWeight={700}>
                               {(() => {
                                 const d = new Date(group.date);
