@@ -70,7 +70,7 @@ type InventoryInterface interface {
 	List(accountID uint, status string) ([]model.InventoryItem, error)
 	GetItemDetail(accountID uint, assetID string) (*ItemDetail, error)
 	ListGroups(accountID uint, status, weaponType string, page, pageSize int, sortBy, sortDir string) (*PaginatedGroups, error)
-	ListDailyBuys(accountID uint) ([]DailyBuyGroup, error)
+	ListDailyBuys(accountID uint, page, pageSize int) (*DailyBuyPaginated, error)
 	SetPriceProvider(p PriceProvider)
 	SetPriceSource(source string)
 }
@@ -321,7 +321,7 @@ func (s *service) sortGroups(groups []InventoryGroup, sortBy, sortDir string) {
 	})
 }
 
-func (s *service) ListDailyBuys(accountID uint) ([]DailyBuyGroup, error) {
+func (s *service) ListDailyBuys(accountID uint, page, pageSize int) (*DailyBuyPaginated, error) {
 	rows, err := s.orm.FindDailyBuys(accountID)
 	if err != nil {
 		return nil, err
@@ -381,7 +381,23 @@ func (s *service) ListDailyBuys(accountID uint) ([]DailyBuyGroup, error) {
 		groups = append(groups, g)
 	}
 	sort.Slice(groups, func(i, j int) bool { return groups[i].Date > groups[j].Date })
-	return groups, nil
+
+	total := int64(len(groups))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 30
+	}
+	offset := (page - 1) * pageSize
+	if offset >= len(groups) {
+		return &DailyBuyPaginated{Groups: nil, Total: total, Page: page, PageSize: pageSize}, nil
+	}
+	end := offset + pageSize
+	if end > len(groups) {
+		end = len(groups)
+	}
+	return &DailyBuyPaginated{Groups: groups[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
 }
 
 func (s *service) GetItemDetail(accountID uint, assetID string) (*ItemDetail, error) {
@@ -443,6 +459,13 @@ type DailyBuyGroup struct {
 	TotalCount       int            `json:"totalCount"`
 	TotalCost        int64          `json:"totalCost"`
 	TotalMarketValue *int64         `json:"totalMarketValue,omitempty"`
+}
+
+type DailyBuyPaginated struct {
+	Groups   []DailyBuyGroup `json:"groups"`
+	Total    int64           `json:"total"`
+	Page     int             `json:"page"`
+	PageSize int             `json:"pageSize"`
 }
 
 var Module = fx.Module("inventory",

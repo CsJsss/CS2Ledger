@@ -115,6 +115,13 @@ type DailySellGroup struct {
 	TotalFee    int64           `json:"totalFee"`
 }
 
+type DailySellPaginated struct {
+	Groups   []DailySellGroup `json:"groups"`
+	Total    int64            `json:"total"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+}
+
 type TradeInterface interface {
 	ListByAccount(accountID uint, tradeType string) ([]model.TradeRecord, error)
 	ListCompletedTrades(accountID uint) ([]CompletedTradeView, error)
@@ -123,7 +130,7 @@ type TradeInterface interface {
 	ListUnmatchedSells(accountID uint) ([]model.TradeRecord, error)
 	SetPriceProvider(p PriceProvider)
 	SetPriceSource(source string)
-	ListDailySells(accountID uint, year, month int) ([]DailySellGroup, error)
+	ListDailySells(accountID uint, year, month int, page, pageSize int) (*DailySellPaginated, error)
 }
 
 type service struct {
@@ -416,7 +423,7 @@ func (svc *service) GetCompletedTradesSummary(accountID uint) (*CompletedTradesS
 	return sum, nil
 }
 
-func (svc *service) ListDailySells(accountID uint, year, month int) ([]DailySellGroup, error) {
+func (svc *service) ListDailySells(accountID uint, year, month int, page, pageSize int) (*DailySellPaginated, error) {
 	rows, err := svc.orm.FindDailySells(accountID, year, month)
 	if err != nil {
 		return nil, err
@@ -458,7 +465,23 @@ func (svc *service) ListDailySells(accountID uint, year, month int) ([]DailySell
 		})
 	}
 	sort.Slice(groups, func(i, j int) bool { return groups[i].Date > groups[j].Date })
-	return groups, nil
+
+	total := int64(len(groups))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 30
+	}
+	offset := (page - 1) * pageSize
+	if offset >= len(groups) {
+		return &DailySellPaginated{Groups: nil, Total: total, Page: page, PageSize: pageSize}, nil
+	}
+	end := offset + pageSize
+	if end > len(groups) {
+		end = len(groups)
+	}
+	return &DailySellPaginated{Groups: groups[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
 }
 
 var Module = fx.Module("trade",
