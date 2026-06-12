@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -1181,7 +1181,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
   const [jumpPage, setJumpPage] = useState('');
 
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = 12;
 
   const {
     data: paginated,
@@ -1189,28 +1189,11 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
     error,
     refetch,
   } = useDailySells(accountId, 0, 0, page + 1, PAGE_SIZE);
-  const { isExpanded, toggle, expandAll } = useExpandableSet();
+  const { isExpanded, toggle } = useExpandableSet();
 
-  const groups = paginated?.groups ?? [];
-  const totalGroups = paginated?.total ?? 0;
+  const months = useMemo(() => paginated?.months ?? [], [paginated?.months]);
+  const totalMonths = paginated?.total ?? 0;
 
-  const monthlyGroups = useMemo(() => {
-    const map = new Map<string, { count: number; profit: number; fee: number }>();
-    for (const g of groups) {
-      const m = g.date.substring(0, 7);
-      const entry = map.get(m) || { count: 0, profit: 0, fee: 0 };
-      entry.count += g.totalCount;
-      entry.profit += g.totalProfit;
-      entry.fee += g.totalFee;
-      map.set(m, entry);
-    }
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginated?.groups]);
-
-  useEffect(() => {
-    expandAll(monthlyGroups.keys());
-  }, [monthlyGroups, expandAll]);
 
   if (isLoading) {
     return (
@@ -1239,7 +1222,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
 
   return (
     <Box mt={3}>
-      {groups.length === 0 && (
+      {months.length === 0 && (
         <EmptyState
           icon={<ReceiptIcon sx={{ fontSize: 48 }} />}
           title="暂无卖出记录"
@@ -1247,20 +1230,19 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
         />
       )}
 
-      {groups.length > 0 && (
+      {months.length > 0 && (
         <React.Fragment>
           <Paper>
             <TableContainer>
               <Table size="small">
                 <TableBody>
-                  {Array.from(monthlyGroups.entries()).map(([monthKey, mData]) => {
-                    const monthGroups = groups.filter((g) => g.date.substring(0, 7) === monthKey);
-                    const monthExpanded = isExpanded(monthKey);
-                    const mLabel = monthKey.replace('-', '年') + '月';
-                    const netPl = mData.profit - mData.fee;
+                  {months.map((m) => {
+                    const monthExpanded = isExpanded(m.month);
+                    const mLabel = m.month.replace('-', '年') + '月';
+                    const netPl = m.totalProfit - m.totalFee;
 
                     return (
-                      <React.Fragment key={monthKey}>
+                      <React.Fragment key={m.month}>
                         <TableRow
                           hover
                           sx={{
@@ -1269,7 +1251,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                             borderBottom: '2px solid',
                             borderColor: 'divider',
                           }}
-                          onClick={() => toggle(monthKey)}
+                          onClick={() => toggle(m.month)}
                         >
                           <TableCell sx={{ py: 1, width: 40 }}>
                             <IconButton size="small">
@@ -1286,15 +1268,17 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                 {mLabel}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                卖出 {mData.count} 件
+                                卖出 {m.totalCount} 件
                               </Typography>
                               <Typography variant="body2">
                                 利润{' '}
-                                <span style={{ color: plHexColor(mData.profit), fontWeight: 600 }}>
-                                  {formatCNY(mData.profit)}
+                                <span style={{ color: plHexColor(m.totalProfit), fontWeight: 600 }}>
+                                  {formatCNY(m.totalProfit)}
                                 </span>
                               </Typography>
-                              <Typography variant="body2">手续费 {formatCNY(mData.fee)}</Typography>
+                              <Typography variant="body2">
+                                手续费 {formatCNY(m.totalFee)}
+                              </Typography>
                               <Typography variant="body2">
                                 净利{' '}
                                 <span style={{ color: plHexColor(netPl), fontWeight: 600 }}>
@@ -1308,7 +1292,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                           <TableCell colSpan={3} sx={{ p: 0 }}>
                             <Collapse in={monthExpanded}>
                               <Box>
-                                {monthGroups.map((group) => {
+                                {m.dayGroups.map((group) => {
                                   const expanded = isExpanded(group.date);
                                   return (
                                     <React.Fragment key={group.date}>
@@ -1583,11 +1567,11 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
           >
             <TablePagination
               component="div"
-              count={totalGroups}
+              count={totalMonths}
               page={page}
               rowsPerPage={PAGE_SIZE}
               onPageChange={(_, p) => setPage(p)}
-              rowsPerPageOptions={[30]}
+              rowsPerPageOptions={[12]}
               labelRowsPerPage="每页"
             />
             <TextField
@@ -1600,7 +1584,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                 if (e.key === 'Enter' && jumpPage) {
                   const p = Math.max(
                     1,
-                    Math.min(Math.ceil(totalGroups / PAGE_SIZE), Number(jumpPage)),
+                    Math.min(Math.ceil(totalMonths / PAGE_SIZE), Number(jumpPage)),
                   );
                   setPage(p - 1);
                   setJumpPage('');

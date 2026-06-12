@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { type ColumnDef } from '@tanstack/react-table';
 import Table from '@mui/material/Table';
@@ -228,7 +228,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
   const [jumpPage, setJumpPage] = useState('');
 
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = 12;
 
   const {
     data: paginated,
@@ -236,28 +236,11 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
     error,
     refetch,
   } = useDailyBuys(accountId, page + 1, PAGE_SIZE);
-  const { isExpanded, toggle, expandAll } = useExpandableSet();
+  const { isExpanded, toggle } = useExpandableSet();
 
-  const groups = paginated?.groups ?? [];
-  const totalGroups = paginated?.total ?? 0;
+  const months = useMemo(() => paginated?.months ?? [], [paginated?.months]);
+  const totalMonths = paginated?.total ?? 0;
 
-  const monthlyGroups = useMemo(() => {
-    const map = new Map<string, { cost: number; mv: number | null; count: number }>();
-    for (const g of groups) {
-      const m = g.date.substring(0, 7);
-      const entry = map.get(m) || { cost: 0, mv: null as number | null, count: 0 };
-      entry.cost += g.totalCost;
-      entry.count += g.totalCount;
-      if (g.totalMarketValue != null) entry.mv = (entry.mv ?? 0) + g.totalMarketValue;
-      map.set(m, entry);
-    }
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginated?.groups]);
-
-  useEffect(() => {
-    expandAll(monthlyGroups.keys());
-  }, [monthlyGroups, expandAll]);
 
   if (isLoading) {
     return (
@@ -286,7 +269,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
 
   return (
     <Box mt={3}>
-      {groups.length === 0 && (
+      {months.length === 0 && (
         <EmptyState
           icon={<ReceiptIcon sx={{ fontSize: 48 }} />}
           title="暂无买入记录"
@@ -294,21 +277,20 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
         />
       )}
 
-      {groups.length > 0 && (
+      {months.length > 0 && (
         <React.Fragment>
           <Paper>
             <TableContainer>
               <Table size="small">
                 <TableBody>
-                  {Array.from(monthlyGroups.entries()).map(([monthKey, mData]) => {
-                    const monthGroups = groups.filter((g) => g.date.substring(0, 7) === monthKey);
-                    const monthExpanded = isExpanded(monthKey);
-                    const pl = mData.mv != null ? mData.mv - mData.cost : null;
-                    const plRate = mData.cost > 0 && pl != null ? (pl / mData.cost) * 100 : null;
-                    const mLabel = monthKey.replace('-', '年') + '月';
+                  {months.map((m) => {
+                    const monthExpanded = isExpanded(m.month);
+                    const pl = m.totalMarketValue != null ? m.totalMarketValue - m.totalCost : null;
+                    const plRate = m.totalCost > 0 && pl != null ? (pl / m.totalCost) * 100 : null;
+                    const mLabel = m.month.replace('-', '年') + '月';
 
                     return (
-                      <React.Fragment key={monthKey}>
+                      <React.Fragment key={m.month}>
                         <TableRow
                           hover
                           sx={{
@@ -317,7 +299,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                             borderBottom: '2px solid',
                             borderColor: 'divider',
                           }}
-                          onClick={() => toggle(monthKey)}
+                          onClick={() => toggle(m.month)}
                         >
                           <TableCell sx={{ py: 1, width: 40 }}>
                             <IconButton size="small">
@@ -334,13 +316,13 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                 {mLabel}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                {mData.count} 件
+                                {m.totalCount} 件
                               </Typography>
-                              <Typography variant="body2">成本 {formatCNY(mData.cost)}</Typography>
-                              {mData.mv != null && pl != null && (
+                              <Typography variant="body2">成本 {formatCNY(m.totalCost)}</Typography>
+                              {m.totalMarketValue != null && pl != null && (
                                 <>
                                   <Typography variant="body2">
-                                    市值 {formatCNY(mData.mv)}
+                                    市值 {formatCNY(m.totalMarketValue)}
                                   </Typography>
                                   <Typography variant="body2">
                                     盈亏{' '}
@@ -366,7 +348,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                           <TableCell colSpan={3} sx={{ p: 0 }}>
                             <Collapse in={monthExpanded}>
                               <Box>
-                                {monthGroups.map((group) => {
+                                {m.dayGroups.map((group) => {
                                   const expanded = isExpanded(group.date);
                                   return (
                                     <React.Fragment key={group.date}>
@@ -712,11 +694,11 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
           >
             <TablePagination
               component="div"
-              count={totalGroups}
+              count={totalMonths}
               page={page}
               rowsPerPage={PAGE_SIZE}
               onPageChange={(_, p) => setPage(p)}
-              rowsPerPageOptions={[30]}
+              rowsPerPageOptions={[12]}
               labelRowsPerPage="每页"
             />
             <TextField
@@ -729,7 +711,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                 if (e.key === 'Enter' && jumpPage) {
                   const p = Math.max(
                     1,
-                    Math.min(Math.ceil(totalGroups / PAGE_SIZE), Number(jumpPage)),
+                    Math.min(Math.ceil(totalMonths / PAGE_SIZE), Number(jumpPage)),
                   );
                   setPage(p - 1);
                   setJumpPage('');
