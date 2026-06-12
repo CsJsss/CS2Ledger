@@ -31,6 +31,7 @@ type TradeInterface interface {
 	FindCompletedTradeGroupKeys(accountID uint, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
 	FindSellsByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.TradeRecord, error)
 	FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
+	FindDailySells(accountID uint, year, month int) ([]DailySellRow, error)
 }
 
 type InventoryGroupKey struct {

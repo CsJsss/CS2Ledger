@@ -2,11 +2,26 @@ package orm
 
 import (
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 )
+
+// DailySellRow is a denormalized row for daily-sell queries, assembled from a matched sell+buy pair.
+type DailySellRow struct {
+	SellID    uint
+	ItemName  string
+	Exterior  string
+	Quantity  int64
+	SellPrice int64
+	SellFee   int64
+	SellAt    int64
+	Source    string
+	BuyPrice  int64
+	BuyFee    int64
+}
 
 func (o *ormImpl) CreateTrade(t *model.TradeRecord) error {
 	t.ItemName = strings.TrimSpace(t.ItemName)
@@ -210,4 +225,73 @@ func (o *ormImpl) FindTradeRecordsByIDs(ids []uint) ([]model.TradeRecord, error)
 	var records []model.TradeRecord
 	err := o.db.Where("id IN ?", ids).Find(&records).Error
 	return records, err
+}
+
+func (o *ormImpl) FindDailySells(accountID uint, year, month int) ([]DailySellRow, error) {
+	// Step 1: query matched sells.
+	q := o.db.Model(&model.TradeRecord{}).
+		Where("trade_type = ? AND matched_buy_trade_id IS NOT NULL", model.DirectionSell)
+	if accountID != 0 {
+		q = q.Where("account_id = ?", accountID)
+	}
+	if year > 0 && month > 0 {
+		start := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+		end := time.Date(year, time.Month(month+1), 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+		q = q.Where("trade_at >= ? AND trade_at < ?", start, end)
+	}
+
+	var sells []model.TradeRecord
+	if err := q.Order("trade_at DESC").Find(&sells).Error; err != nil {
+		return nil, err
+	}
+	if len(sells) == 0 {
+		return nil, nil
+	}
+
+	// Step 2: collect matched buy IDs.
+	buyIDs := make([]uint, 0, len(sells))
+	for _, s := range sells {
+		if s.MatchedBuyTradeID != nil {
+			buyIDs = append(buyIDs, *s.MatchedBuyTradeID)
+		}
+	}
+	if len(buyIDs) == 0 {
+		return nil, nil
+	}
+
+	// Step 3: query buys by IDs.
+	var buys []model.TradeRecord
+	if err := o.db.Model(&model.TradeRecord{}).
+		Where("id IN ?", buyIDs).Find(&buys).Error; err != nil {
+		return nil, err
+	}
+	buyMap := make(map[uint]*model.TradeRecord, len(buys))
+	for i := range buys {
+		buyMap[buys[i].ID] = &buys[i]
+	}
+
+	// Step 4: assemble rows in Go.
+	rows := make([]DailySellRow, 0, len(sells))
+	for _, s := range sells {
+		if s.MatchedBuyTradeID == nil {
+			continue
+		}
+		b, ok := buyMap[*s.MatchedBuyTradeID]
+		if !ok {
+			continue
+		}
+		rows = append(rows, DailySellRow{
+			SellID:    s.ID,
+			ItemName:  s.ItemName,
+			Exterior:  s.Exterior,
+			Quantity:  s.Quantity,
+			SellPrice: s.UnitPrice,
+			SellFee:   s.Fee,
+			SellAt:    s.TradeAt,
+			Source:    s.Source,
+			BuyPrice:  b.UnitPrice,
+			BuyFee:    b.Fee,
+		})
+	}
+	return rows, nil
 }
