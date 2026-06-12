@@ -2,6 +2,11 @@ package model
 
 import "gorm.io/gorm"
 
+const (
+	InventoryStatusInInventory = "in_inventory"
+	InventoryStatusListed      = "listed"
+)
+
 type InventoryItem struct {
 	gorm.Model
 	CS2Item     `gorm:"embedded"`
