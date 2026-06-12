@@ -228,7 +228,12 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 30;
 
-  const { data: paginated, isLoading, error, refetch } = useDailyBuys(accountId, page + 1, PAGE_SIZE);
+  const {
+    data: paginated,
+    isLoading,
+    error,
+    refetch,
+  } = useDailyBuys(accountId, page + 1, PAGE_SIZE);
   const { isExpanded, toggle } = useExpandableSet();
 
   const groups = paginated?.groups ?? [];
@@ -306,250 +311,287 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                     const thisMonth = group.date.substring(0, 7);
                     const prevMonth = gi > 0 ? groups[gi - 1].date.substring(0, 7) : thisMonth;
 
-                  return (
-                    <React.Fragment key={group.date}>
-                      {thisMonth !== prevMonth && (
-                        <TableRow>
-                          <TableCell colSpan={3} sx={{ py: 1, textAlign: 'center' }}>
-                            <Typography variant="caption" color="text.disabled">
-                              ── 更早的买入 ──
+                    return (
+                      <React.Fragment key={group.date}>
+                        {thisMonth !== prevMonth && (
+                          <TableRow>
+                            <TableCell colSpan={3} sx={{ py: 1, textAlign: 'center' }}>
+                              <Typography variant="caption" color="text.disabled">
+                                ── 更早的买入 ──
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        <TableRow
+                          hover
+                          sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
+                          onClick={() => toggle(group.date)}
+                        >
+                          <TableCell sx={{ py: 1, width: 40 }}>
+                            <IconButton size="small">
+                              {expanded ? (
+                                <KeyboardArrowDownIcon fontSize="small" />
+                              ) : (
+                                <KeyboardArrowRightIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {(() => {
+                                const d = new Date(group.date);
+                                return `${d.getMonth() + 1}月${d.getDate()}日`;
+                              })()}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {group.dayOfWeek}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              买入 {group.totalCount} 件
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              成本 {formatCNY(group.totalCost)}
+                              {group.totalMarketValue != null ? (
+                                <span>
+                                  {' '}
+                                  · 当前市值{' '}
+                                  <span
+                                    style={{
+                                      color: plHexColor(group.totalMarketValue - group.totalCost),
+                                    }}
+                                  >
+                                    {formatCNY(group.totalMarketValue)}
+                                  </span>{' '}
+                                  · 浮动盈亏{' '}
+                                  <span
+                                    style={{
+                                      color: plHexColor(group.totalMarketValue - group.totalCost),
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {formatCNY(group.totalMarketValue - group.totalCost)}
+                                  </span>
+                                  {group.totalCost > 0 && (
+                                    <span>
+                                      {' '}
+                                      · 盈亏率{' '}
+                                      <span
+                                        style={{
+                                          color: plHexColor(
+                                            ((group.totalMarketValue - group.totalCost) / group.totalCost) * 100,
+                                          ),
+                                        }}
+                                      >
+                                        {(((group.totalMarketValue - group.totalCost) / group.totalCost) * 100) >= 0 ? '+' : ''}
+                                        {(((group.totalMarketValue - group.totalCost) / group.totalCost) * 100).toFixed(1)}%
+                                      </span>
+                                    </span>
+                                  )}
+                                </span>
+                              ) : null}
                             </Typography>
                           </TableCell>
                         </TableRow>
-                      )}
-                      <TableRow
-                        hover
-                        sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
-                        onClick={() => toggle(group.date)}
-                      >
-                        <TableCell sx={{ py: 1, width: 40 }}>
-                          <IconButton size="small">
-                            {expanded ? (
-                              <KeyboardArrowDownIcon fontSize="small" />
-                            ) : (
-                              <KeyboardArrowRightIcon fontSize="small" />
-                            )}
-                          </IconButton>
-                        </TableCell>
-                        <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
-                          <Typography variant="body2" fontWeight={700}>
-                            {(() => {
-                              const d = new Date(group.date);
-                              return `${d.getMonth() + 1}月${d.getDate()}日`;
-                            })()}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {group.dayOfWeek}
-                          </Typography>
-                        </TableCell>
-                        <TableCell sx={{ py: 1 }}>
-                          <Typography variant="body2" fontWeight={600}>
-                            买入 {group.totalCount} 件
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            成本 {formatCNY(group.totalCost)}
-                            {group.totalMarketValue != null ? (
-                              <span>
-                                {' '}
-                                · 当前市值{' '}
-                                <span
-                                  style={{
-                                    color: plHexColor(group.totalMarketValue - group.totalCost),
-                                  }}
-                                >
-                                  {formatCNY(group.totalMarketValue)}
-                                </span>
-                                {' '}
-                                · 浮动盈亏{' '}
-                                <span
-                                  style={{
-                                    color: plHexColor(group.totalMarketValue - group.totalCost),
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {formatCNY(group.totalMarketValue - group.totalCost)}
-                                </span>
-                              </span>
-                            ) : null}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                      <TableRow sx={{ '& td': { border: 0 } }}>
-                        <TableCell colSpan={3} sx={{ p: 0 }}>
-                          <Collapse in={expanded}>
-                            <Box sx={{ mx: 2, my: 1 }}>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
-                                      物品
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      数量
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      买入价
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      总额
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      当前市价
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      浮动盈亏
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">
-                                      浮动率
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
-                                      平台
-                                    </TableCell>
-                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
-                                      状态
-                                    </TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {group.items.map((item, idx) => {
-                                    const upl = item.unrealizedPl;
-                                    const uplRate =
-                                      item.totalCost > 0 && upl != null
-                                        ? (upl / item.totalCost) * 100
-                                        : null;
-                                    return (
-                                      <TableRow key={`${group.date}-${idx}`} hover>
-                                        <TableCell sx={{ py: 0.5 }}>
-                                          <Typography variant="body2" fontWeight={500}>
-                                            {item.itemName}
-                                            {item.exterior ? ` (${item.exterior})` : ''}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2" className="mono-num">
-                                            {item.quantity}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2" className="mono-num">
-                                            {formatCNY(item.buyPrice)}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2" className="mono-num">
-                                            {formatCNY(item.totalCost)}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          <Typography variant="body2" className="mono-num">
-                                            {item.marketPrice != null
-                                              ? formatCNY(item.marketPrice)
-                                              : '--'}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          {upl != null ? (
-                                            <Typography
-                                              variant="body2"
-                                              color={plHexColor(upl)}
-                                              fontWeight={600}
-                                              className="mono-num"
-                                            >
-                                              {formatCNY(upl)}
+                        <TableRow sx={{ '& td': { border: 0 } }}>
+                          <TableCell colSpan={3} sx={{ p: 0 }}>
+                            <Collapse in={expanded}>
+                              <Box sx={{ mx: 2, my: 1 }}>
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                        物品
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        数量
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        买入价
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        总额
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        当前市价
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        浮动盈亏
+                                      </TableCell>
+                                      <TableCell
+                                        sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                        align="right"
+                                      >
+                                        浮动率
+                                      </TableCell>
+                                      <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                        平台
+                                      </TableCell>
+                                      <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                        状态
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {group.items.map((item, idx) => {
+                                      const upl = item.unrealizedPl;
+                                      const uplRate =
+                                        item.totalCost > 0 && upl != null
+                                          ? (upl / item.totalCost) * 100
+                                          : null;
+                                      return (
+                                        <TableRow key={`${group.date}-${idx}`} hover>
+                                          <TableCell sx={{ py: 0.5 }}>
+                                            <Typography variant="body2" fontWeight={500}>
+                                              {item.itemName}
+                                              {item.exterior ? ` (${item.exterior})` : ''}
                                             </Typography>
-                                          ) : (
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              className="mono-num"
-                                            >
-                                              --
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            <Typography variant="body2" className="mono-num">
+                                              {item.quantity}
                                             </Typography>
-                                          )}
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }} align="right">
-                                          {uplRate != null ? (
-                                            <Typography
-                                              variant="body2"
-                                              color={plHexColor(uplRate)}
-                                              className="mono-num"
-                                            >
-                                              {uplRate >= 0 ? '+' : ''}
-                                              {uplRate.toFixed(1)}%
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            <Typography variant="body2" className="mono-num">
+                                              {formatCNY(item.buyPrice)}
                                             </Typography>
-                                          ) : (
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              className="mono-num"
-                                            >
-                                              --
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            <Typography variant="body2" className="mono-num">
+                                              {formatCNY(item.totalCost)}
                                             </Typography>
-                                          )}
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }}>
-                                          <Typography variant="body2" color="text.secondary">
-                                            {item.platform}
-                                          </Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: 0.5 }}>
-                                          <Chip
-                                            label={dailyBuyStatusLabel[item.status] ?? item.status}
-                                            size="small"
-                                            color={dailyBuyStatusColor(item.status)}
-                                            variant="outlined"
-                                          />
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                  <TableRow>
-                                    <TableCell colSpan={9} sx={{ py: 0.5 }}>
-                                      <Typography variant="caption" color="text.secondary">
-                                        当日合计：成本 {formatCNY(group.totalCost)}
-                                        {group.totalMarketValue != null && (
-                                          <span>
-                                            {' '}
-                                            · 当前市值 {formatCNY(group.totalMarketValue)} ·
-                                            浮动盈亏{' '}
-                                            <span
-                                              style={{
-                                                color: plHexColor(
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            <Typography variant="body2" className="mono-num">
+                                              {item.marketPrice != null
+                                                ? formatCNY(item.marketPrice)
+                                                : '--'}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            {upl != null ? (
+                                              <Typography
+                                                variant="body2"
+                                                color={plHexColor(upl)}
+                                                fontWeight={600}
+                                                className="mono-num"
+                                              >
+                                                {formatCNY(upl)}
+                                              </Typography>
+                                            ) : (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                className="mono-num"
+                                              >
+                                                --
+                                              </Typography>
+                                            )}
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }} align="right">
+                                            {uplRate != null ? (
+                                              <Typography
+                                                variant="body2"
+                                                color={plHexColor(uplRate)}
+                                                className="mono-num"
+                                              >
+                                                {uplRate >= 0 ? '+' : ''}
+                                                {uplRate.toFixed(1)}%
+                                              </Typography>
+                                            ) : (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                className="mono-num"
+                                              >
+                                                --
+                                              </Typography>
+                                            )}
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }}>
+                                            <Typography variant="body2" color="text.secondary">
+                                              {item.platform}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell sx={{ py: 0.5 }}>
+                                            <Chip
+                                              label={
+                                                dailyBuyStatusLabel[item.status] ?? item.status
+                                              }
+                                              size="small"
+                                              color={dailyBuyStatusColor(item.status)}
+                                              variant="outlined"
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                    <TableRow>
+                                      <TableCell colSpan={9} sx={{ py: 0.5 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                          当日合计：成本 {formatCNY(group.totalCost)}
+                                          {group.totalMarketValue != null && (
+                                            <span>
+                                              {' '}
+                                              · 当前市值 {formatCNY(group.totalMarketValue)} ·
+                                              浮动盈亏{' '}
+                                              <span
+                                                style={{
+                                                  color: plHexColor(
+                                                    group.totalMarketValue - group.totalCost,
+                                                  ),
+                                                }}
+                                              >
+                                                {formatCNY(
                                                   group.totalMarketValue - group.totalCost,
-                                                ),
-                                              }}
-                                            >
-                                              {formatCNY(group.totalMarketValue - group.totalCost)}
+                                                )}
+                                              </span>
                                             </span>
-                                          </span>
-                                        )}
-                                      </Typography>
-                                    </TableCell>
-                                  </TableRow>
-                                </TableBody>
-                              </Table>
-                            </Box>
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <TablePagination
-            component="div"
-            count={totalGroups}
-            page={page}
-            rowsPerPage={PAGE_SIZE}
-            onPageChange={(_, p) => setPage(p)}
-            rowsPerPageOptions={[30]}
-            labelRowsPerPage="每页"
-          />
-        </Box>
+                                          )}
+                                        </Typography>
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <TablePagination
+              component="div"
+              count={totalGroups}
+              page={page}
+              rowsPerPage={PAGE_SIZE}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPageOptions={[30]}
+              labelRowsPerPage="每页"
+            />
+          </Box>
         </React.Fragment>
       )}
     </Box>
