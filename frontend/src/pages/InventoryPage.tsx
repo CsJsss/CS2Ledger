@@ -315,61 +315,70 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
 
                     return (
                       <React.Fragment key={group.date}>
-                        {thisMonth !== prevMonth && (() => {
-                          // Aggregate the previous month's data
-                          let mCost = 0;
-                          let mMV: number | null = null;
-                          let mCount = 0;
-                          for (let j = gi; j < groups.length && groups[j].date.substring(0, 7) === prevMonth; j++) {
-                            const g = groups[j];
-                            mCost += g.totalCost;
-                            mCount += g.totalCount;
-                            if (g.totalMarketValue != null) {
-                              mMV = (mMV ?? 0) + g.totalMarketValue;
+                        {thisMonth !== prevMonth &&
+                          (() => {
+                            // Aggregate the previous month's data
+                            let mCost = 0;
+                            let mMV: number | null = null;
+                            let mCount = 0;
+                            for (
+                              let j = gi;
+                              j < groups.length && groups[j].date.substring(0, 7) === prevMonth;
+                              j++
+                            ) {
+                              const g = groups[j];
+                              mCost += g.totalCost;
+                              mCount += g.totalCount;
+                              if (g.totalMarketValue != null) {
+                                mMV = (mMV ?? 0) + g.totalMarketValue;
+                              }
                             }
-                          }
-                          const mPl = mMV != null ? mMV - mCost : null;
-                          const mPlRate = mCost > 0 && mPl != null ? (mPl / mCost) * 100 : null;
-                          const mLabel = prevMonth.replace('-', '年') + '月';
-                          return (
-                            <TableRow>
-                              <TableCell colSpan={3} sx={{ py: 1, borderBottom: '2px solid', borderColor: 'divider' }}>
-                                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                                  <Typography variant="body2" fontWeight={600}>
-                                    {mLabel}
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {mCount} 件
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    成本 {formatCNY(mCost)}
-                                  </Typography>
-                                  {mMV != null && (
-                                    <>
-                                      <Typography variant="body2">
-                                        市值 {formatCNY(mMV)}
-                                      </Typography>
-                                      <Typography variant="body2">
-                                        盈亏{' '}
-                                        <span style={{ color: plHexColor(mPl!), fontWeight: 600 }}>
-                                          {formatCNY(mPl!)}
-                                        </span>
-                                      </Typography>
-                                      {mPlRate != null && (
-                                        <Typography variant="body2">
-                                          盈亏率{' '}
-                                          <span style={{ color: plHexColor(mPlRate) }}>
-                                            {mPlRate >= 0 ? '+' : ''}{mPlRate.toFixed(1)}%
-                                          </span>
-                                        </Typography>
-                                      )}
-                                    </>
-                                  )}
-                                </Box>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })()}
+                            const mLabel = prevMonth.replace('-', '年') + '月';
+                            return (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={3}
+                                  sx={{ py: 1, borderBottom: '2px solid', borderColor: 'divider' }}
+                                >
+                                  <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                                    <Typography variant="body2" fontWeight={600}>
+                                      {mLabel}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                      {mCount} 件
+                                    </Typography>
+                                    <Typography variant="body2">成本 {formatCNY(mCost)}</Typography>
+                                    {mMV != null && (() => {
+                                      const pl = mMV - mCost;
+                                      const plRate = mCost > 0 ? (pl / mCost) * 100 : null;
+                                      return (
+                                        <>
+                                          <Typography variant="body2">
+                                            市值 {formatCNY(mMV)}
+                                          </Typography>
+                                          <Typography variant="body2">
+                                            盈亏{' '}
+                                            <span style={{ color: plHexColor(pl), fontWeight: 600 }}>
+                                              {formatCNY(pl)}
+                                            </span>
+                                          </Typography>
+                                          {plRate != null && (
+                                            <Typography variant="body2">
+                                              盈亏率{' '}
+                                              <span style={{ color: plHexColor(plRate) }}>
+                                                {plRate >= 0 ? '+' : ''}
+                                                {plRate.toFixed(1)}%
+                                              </span>
+                                            </Typography>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })()}
                         <TableRow
                           hover
                           sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
