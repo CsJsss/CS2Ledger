@@ -382,22 +382,60 @@ func (s *service) ListDailyBuys(accountID uint, page, pageSize int) (*DailyBuyPa
 	}
 	sort.Slice(groups, func(i, j int) bool { return groups[i].Date > groups[j].Date })
 
-	total := int64(len(groups))
+	// Group by month
+	type monthKey string
+	byMonth := make(map[monthKey][]DailyBuyGroup)
+	for _, g := range groups {
+		mk := monthKey(g.Date[:7])
+		byMonth[mk] = append(byMonth[mk], g)
+	}
+
+	// Build month groups
+	months := make([]DailyBuyMonthGroup, 0, len(byMonth))
+	for mk, dayGroups := range byMonth {
+		var tc int64
+		var totalCost int64
+		var totalMV int64
+		hasMV := true
+		for _, dg := range dayGroups {
+			tc += int64(dg.TotalCount)
+			totalCost += dg.TotalCost
+			if dg.TotalMarketValue != nil {
+				totalMV += *dg.TotalMarketValue
+			} else {
+				hasMV = false
+			}
+		}
+		mg := DailyBuyMonthGroup{
+			Month:      string(mk),
+			DayGroups:  dayGroups,
+			TotalCount: int(tc),
+			TotalCost:  totalCost,
+		}
+		if hasMV {
+			mg.TotalMarketValue = &totalMV
+		}
+		months = append(months, mg)
+	}
+	sort.Slice(months, func(i, j int) bool { return months[i].Month > months[j].Month })
+
+	// Paginate by months
+	total := int64(len(months))
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 30
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 12
 	}
 	offset := (page - 1) * pageSize
-	if offset >= len(groups) {
-		return &DailyBuyPaginated{Groups: nil, Total: total, Page: page, PageSize: pageSize}, nil
+	if offset >= len(months) {
+		return &DailyBuyPaginated{Months: nil, Total: total, Page: page, PageSize: pageSize}, nil
 	}
 	end := offset + pageSize
-	if end > len(groups) {
-		end = len(groups)
+	if end > len(months) {
+		end = len(months)
 	}
-	return &DailyBuyPaginated{Groups: groups[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
+	return &DailyBuyPaginated{Months: months[offset:end], Total: total, Page: page, PageSize: pageSize}, nil
 }
 
 func (s *service) GetItemDetail(accountID uint, assetID string) (*ItemDetail, error) {
@@ -461,11 +499,19 @@ type DailyBuyGroup struct {
 	TotalMarketValue *int64         `json:"totalMarketValue,omitempty"`
 }
 
+type DailyBuyMonthGroup struct {
+	Month            string          `json:"month"`
+	DayGroups        []DailyBuyGroup `json:"dayGroups"`
+	TotalCount       int             `json:"totalCount"`
+	TotalCost        int64           `json:"totalCost"`
+	TotalMarketValue *int64          `json:"totalMarketValue,omitempty"`
+}
+
 type DailyBuyPaginated struct {
-	Groups   []DailyBuyGroup `json:"groups"`
-	Total    int64           `json:"total"`
-	Page     int             `json:"page"`
-	PageSize int             `json:"pageSize"`
+	Months   []DailyBuyMonthGroup `json:"months"`
+	Total    int64                `json:"total"`
+	Page     int                  `json:"page"`
+	PageSize int                  `json:"pageSize"`
 }
 
 var Module = fx.Module("inventory",

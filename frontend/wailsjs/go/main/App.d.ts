@@ -23,6 +23,10 @@ export function GetCompletedTrades(arg1:number,arg2:number,arg3:number,arg4:stri
 
 export function GetCompletedTradesSummary(arg1:number):Promise<trade.CompletedTradesSummary>;
 
+export function GetDailyBuys(arg1:number,arg2:number,arg3:number):Promise<inventory.DailyBuyPaginated>;
+
+export function GetDailySells(arg1:number,arg2:number,arg3:number,arg4:number,arg5:number):Promise<trade.DailySellPaginated>;
+
 export function GetDashboardSummary():Promise<main.DashboardSummary>;
 
 export function GetInventory(arg1:number,arg2:string,arg3:string,arg4:number,arg5:number,arg6:string,arg7:string):Promise<inventory.PaginatedGroups>;
