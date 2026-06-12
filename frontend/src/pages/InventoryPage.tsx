@@ -9,6 +9,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import TablePagination from '@mui/material/TablePagination';
+import TextField from '@mui/material/TextField';
 import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
@@ -224,6 +225,7 @@ const dailyBuyStatusColor = (status: string): 'success' | 'warning' | 'default' 
 
 function DailyBuysContent({ accountId }: { accountId: number | null }) {
   const [dismissed, setDismissed] = useState(false);
+  const [jumpPage, setJumpPage] = useState('');
 
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 30;
@@ -597,7 +599,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
               </Table>
             </TableContainer>
           </Paper>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 2, gap: 1 }}>
             <TablePagination
               component="div"
               count={totalGroups}
@@ -606,6 +608,22 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
               onPageChange={(_, p) => setPage(p)}
               rowsPerPageOptions={[30]}
               labelRowsPerPage="每页"
+            />
+            <TextField
+              size="small"
+              type="number"
+              placeholder="跳转"
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && jumpPage) {
+                  const p = Math.max(1, Math.min(Math.ceil(totalGroups / PAGE_SIZE), Number(jumpPage)));
+                  setPage(p - 1);
+                  setJumpPage('');
+                }
+              }}
+              sx={{ width: 70 }}
+              inputProps={{ min: 1, style: { textAlign: 'center', padding: '4px 8px' } }}
             />
           </Box>
         </React.Fragment>
