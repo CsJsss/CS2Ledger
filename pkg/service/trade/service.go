@@ -9,6 +9,7 @@ import (
 	"github.com/CsJsss/CS2Ledger/pkg/model"
 	"github.com/CsJsss/CS2Ledger/pkg/orm"
 	"github.com/CsJsss/CS2Ledger/pkg/platform"
+	"github.com/CsJsss/CS2Ledger/pkg/utils/dateutil"
 	"github.com/CsJsss/CS2Ledger/pkg/utils/logfx"
 )
 
@@ -94,6 +95,26 @@ type CompletedTradesSummary struct {
 	TotalNetPl   int64 `json:"totalNetPl"`
 }
 
+type DailySellItem struct {
+	ItemName  string `json:"itemName"`
+	Exterior  string `json:"exterior"`
+	Quantity  int64  `json:"quantity"`
+	BuyPrice  int64  `json:"buyPrice"`
+	SellPrice int64  `json:"sellPrice"`
+	TotalFee  int64  `json:"totalFee"`
+	Profit    int64  `json:"profit"`
+	Platform  string `json:"platform"`
+}
+
+type DailySellGroup struct {
+	Date        string          `json:"date"`
+	DayOfWeek   string          `json:"dayOfWeek"`
+	Items       []DailySellItem `json:"items"`
+	TotalCount  int             `json:"totalCount"`
+	TotalProfit int64           `json:"totalProfit"`
+	TotalFee    int64           `json:"totalFee"`
+}
+
 type TradeInterface interface {
 	ListByAccount(accountID uint, tradeType string) ([]model.TradeRecord, error)
 	ListCompletedTrades(accountID uint) ([]CompletedTradeView, error)
@@ -102,6 +123,7 @@ type TradeInterface interface {
 	ListUnmatchedSells(accountID uint) ([]model.TradeRecord, error)
 	SetPriceProvider(p PriceProvider)
 	SetPriceSource(source string)
+	ListDailySells(accountID uint, year, month int) ([]DailySellGroup, error)
 }
 
 type service struct {
@@ -392,6 +414,51 @@ func (svc *service) GetCompletedTradesSummary(accountID uint) (*CompletedTradesS
 		sum.TotalNetPl += t.NetPl
 	}
 	return sum, nil
+}
+
+func (svc *service) ListDailySells(accountID uint, year, month int) ([]DailySellGroup, error) {
+	rows, err := svc.orm.FindDailySells(accountID, year, month)
+	if err != nil {
+		return nil, err
+	}
+
+	type dateKey string
+	byDate := make(map[dateKey][]DailySellItem)
+	for _, r := range rows {
+		date, _ := dateutil.FormatTimestamp(r.SellAt)
+		dk := dateKey(date)
+		profit := (r.SellPrice-r.BuyPrice)*r.Quantity - (r.SellFee + r.BuyFee)
+		byDate[dk] = append(byDate[dk], DailySellItem{
+			ItemName:  r.ItemName,
+			Exterior:  r.Exterior,
+			Quantity:  r.Quantity,
+			BuyPrice:  r.BuyPrice,
+			SellPrice: r.SellPrice,
+			TotalFee:  r.SellFee + r.BuyFee,
+			Profit:    profit,
+			Platform:  r.Source,
+		})
+	}
+
+	groups := make([]DailySellGroup, 0, len(byDate))
+	for dk, items := range byDate {
+		var totalProfit, totalFee int64
+		for _, it := range items {
+			totalProfit += it.Profit
+			totalFee += it.TotalFee
+		}
+		t, _ := dateutil.ParseDate(string(dk))
+		groups = append(groups, DailySellGroup{
+			Date:        string(dk),
+			DayOfWeek:   dateutil.DayOfWeekNames[t.Weekday()],
+			Items:       items,
+			TotalCount:  len(items),
+			TotalProfit: totalProfit,
+			TotalFee:    totalFee,
+		})
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].Date > groups[j].Date })
+	return groups, nil
 }
 
 var Module = fx.Module("trade",
