@@ -1263,7 +1263,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                               )}
                             </IconButton>
                           </TableCell>
-                          <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
+                          <TableCell sx={{ py: 1, width: 140, textAlign: 'center' }}>
                             <Typography variant="body2" fontWeight={700}>
                               {(() => {
                                 const d = new Date(group.date);
@@ -1281,7 +1281,9 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
                               <Typography variant="body2">
                                 利润{' '}
-                                <span style={{ color: plHexColor(group.totalProfit), fontWeight: 600 }}>
+                                <span
+                                  style={{ color: plHexColor(group.totalProfit), fontWeight: 600 }}
+                                >
                                   {formatCNY(group.totalProfit)}
                                 </span>
                               </Typography>
@@ -1290,7 +1292,12 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                               </Typography>
                               <Typography variant="body2">
                                 净利{' '}
-                                <span style={{ color: plHexColor(group.totalProfit - group.totalFee), fontWeight: 600 }}>
+                                <span
+                                  style={{
+                                    color: plHexColor(group.totalProfit - group.totalFee),
+                                    fontWeight: 600,
+                                  }}
+                                >
                                   {formatCNY(group.totalProfit - group.totalFee)}
                                 </span>
                               </Typography>

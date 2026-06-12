@@ -336,7 +336,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                               )}
                             </IconButton>
                           </TableCell>
-                          <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
+                          <TableCell sx={{ py: 1, width: 140, textAlign: 'center' }}>
                             <Typography variant="body2" fontWeight={700}>
                               {(() => {
                                 const d = new Date(group.date);
@@ -361,9 +361,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                     市值{' '}
                                     <span
                                       style={{
-                                        color: plHexColor(
-                                          group.totalMarketValue - group.totalCost,
-                                        ),
+                                        color: plHexColor(group.totalMarketValue - group.totalCost),
                                       }}
                                     >
                                       {formatCNY(group.totalMarketValue)}
@@ -373,15 +371,11 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                     浮动盈亏{' '}
                                     <span
                                       style={{
-                                        color: plHexColor(
-                                          group.totalMarketValue - group.totalCost,
-                                        ),
+                                        color: plHexColor(group.totalMarketValue - group.totalCost),
                                         fontWeight: 600,
                                       }}
                                     >
-                                      {formatCNY(
-                                        group.totalMarketValue - group.totalCost,
-                                      )}
+                                      {formatCNY(group.totalMarketValue - group.totalCost)}
                                     </span>
                                   </Typography>
                                   {group.totalCost > 0 && (
@@ -390,23 +384,20 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                       <span
                                         style={{
                                           color: plHexColor(
-                                            ((group.totalMarketValue -
-                                              group.totalCost) /
+                                            ((group.totalMarketValue - group.totalCost) /
                                               group.totalCost) *
                                               100,
                                           ),
                                         }}
                                       >
-                                        {((group.totalMarketValue -
-                                          group.totalCost) /
+                                        {((group.totalMarketValue - group.totalCost) /
                                           group.totalCost) *
                                           100 >=
                                         0
                                           ? '+'
                                           : ''}
                                         {(
-                                          ((group.totalMarketValue -
-                                            group.totalCost) /
+                                          ((group.totalMarketValue - group.totalCost) /
                                             group.totalCost) *
                                           100
                                         ).toFixed(1)}
