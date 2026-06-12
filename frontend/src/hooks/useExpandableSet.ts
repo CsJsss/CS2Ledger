@@ -21,5 +21,13 @@ export function useExpandableSet() {
 
   const isExpanded = useCallback((key: string) => expanded.has(key), [expanded]);
 
-  return { expanded, isExpanded, toggle };
+  const expandAll = useCallback((keys: Iterable<string>) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) next.add(k);
+      return next;
+    });
+  }, []);
+
+  return { expanded, isExpanded, toggle, expandAll };
 }

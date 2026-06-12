@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -1189,7 +1189,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
     error,
     refetch,
   } = useDailySells(accountId, 0, 0, page + 1, PAGE_SIZE);
-  const { isExpanded, toggle } = useExpandableSet();
+  const { isExpanded, toggle, expandAll } = useExpandableSet();
 
   const groups = paginated?.groups ?? [];
   const totalGroups = paginated?.total ?? 0;
@@ -1205,8 +1205,12 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
       map.set(m, entry);
     }
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginated?.groups]);
+
+  useEffect(() => {
+    expandAll(monthlyGroups.keys());
+  }, [monthlyGroups, expandAll]);
 
   if (isLoading) {
     return (
@@ -1250,7 +1254,7 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
               <Table size="small">
                 <TableBody>
                   {Array.from(monthlyGroups.entries()).map(([monthKey, mData]) => {
-                    const monthGroups = groups.filter(g => g.date.substring(0, 7) === monthKey);
+                    const monthGroups = groups.filter((g) => g.date.substring(0, 7) === monthKey);
                     const monthExpanded = isExpanded(monthKey);
                     const mLabel = monthKey.replace('-', '年') + '月';
                     const netPl = mData.profit - mData.fee;
@@ -1259,24 +1263,43 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                       <React.Fragment key={monthKey}>
                         <TableRow
                           hover
-                          sx={{ bgcolor: 'background.paper', cursor: 'pointer', borderBottom: '2px solid', borderColor: 'divider' }}
+                          sx={{
+                            bgcolor: 'background.paper',
+                            cursor: 'pointer',
+                            borderBottom: '2px solid',
+                            borderColor: 'divider',
+                          }}
                           onClick={() => toggle(monthKey)}
                         >
                           <TableCell sx={{ py: 1, width: 40 }}>
                             <IconButton size="small">
-                              {monthExpanded ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowRightIcon fontSize="small" />}
+                              {monthExpanded ? (
+                                <KeyboardArrowDownIcon fontSize="small" />
+                              ) : (
+                                <KeyboardArrowRightIcon fontSize="small" />
+                              )}
                             </IconButton>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} colSpan={2}>
                             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                              <Typography variant="body2" fontWeight={600}>{mLabel}</Typography>
-                              <Typography variant="body2" color="text.secondary">卖出 {mData.count} 件</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {mLabel}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                卖出 {mData.count} 件
+                              </Typography>
                               <Typography variant="body2">
-                                利润 <span style={{ color: plHexColor(mData.profit), fontWeight: 600 }}>{formatCNY(mData.profit)}</span>
+                                利润{' '}
+                                <span style={{ color: plHexColor(mData.profit), fontWeight: 600 }}>
+                                  {formatCNY(mData.profit)}
+                                </span>
                               </Typography>
                               <Typography variant="body2">手续费 {formatCNY(mData.fee)}</Typography>
                               <Typography variant="body2">
-                                净利 <span style={{ color: plHexColor(netPl), fontWeight: 600 }}>{formatCNY(netPl)}</span>
+                                净利{' '}
+                                <span style={{ color: plHexColor(netPl), fontWeight: 600 }}>
+                                  {formatCNY(netPl)}
+                                </span>
                               </Typography>
                             </Box>
                           </TableCell>
@@ -1318,11 +1341,21 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                           <Typography variant="body2" fontWeight={600}>
                                             卖出 {group.totalCount} 件
                                           </Typography>
-                                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                                          <Box
+                                            sx={{
+                                              display: 'flex',
+                                              gap: 2,
+                                              flexWrap: 'wrap',
+                                              mt: 0.5,
+                                            }}
+                                          >
                                             <Typography variant="body2">
                                               利润{' '}
                                               <span
-                                                style={{ color: plHexColor(group.totalProfit), fontWeight: 600 }}
+                                                style={{
+                                                  color: plHexColor(group.totalProfit),
+                                                  fontWeight: 600,
+                                                }}
                                               >
                                                 {formatCNY(group.totalProfit)}
                                               </span>
@@ -1334,7 +1367,9 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                               净利{' '}
                                               <span
                                                 style={{
-                                                  color: plHexColor(group.totalProfit - group.totalFee),
+                                                  color: plHexColor(
+                                                    group.totalProfit - group.totalFee,
+                                                  ),
                                                   fontWeight: 600,
                                                 }}
                                               >
@@ -1351,7 +1386,9 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                               <Table size="small">
                                                 <TableHead>
                                                   <TableRow>
-                                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                                    <TableCell
+                                                      sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                                    >
                                                       物品
                                                     </TableCell>
                                                     <TableCell
@@ -1390,7 +1427,9 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                     >
                                                       利润率
                                                     </TableCell>
-                                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                                    <TableCell
+                                                      sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                                    >
                                                       平台
                                                     </TableCell>
                                                   </TableRow>
@@ -1399,32 +1438,51 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                   {group.items.map((item, idx) => {
                                                     const costBasis = item.buyPrice * item.quantity;
                                                     const profitRate =
-                                                      costBasis > 0 ? (item.profit / costBasis) * 100 : 0;
+                                                      costBasis > 0
+                                                        ? (item.profit / costBasis) * 100
+                                                        : 0;
                                                     return (
                                                       <TableRow key={`${group.date}-${idx}`} hover>
                                                         <TableCell sx={{ py: 0.5 }}>
-                                                          <Typography variant="body2" fontWeight={500}>
+                                                          <Typography
+                                                            variant="body2"
+                                                            fontWeight={500}
+                                                          >
                                                             {item.itemName}
-                                                            {item.exterior ? ` (${item.exterior})` : ''}
+                                                            {item.exterior
+                                                              ? ` (${item.exterior})`
+                                                              : ''}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {item.quantity}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {formatCNY(item.buyPrice)}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {formatCNY(item.sellPrice)}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {formatCNY(item.totalFee)}
                                                           </Typography>
                                                         </TableCell>
@@ -1449,8 +1507,12 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }}>
-                                                          <Typography variant="body2" color="text.secondary">
-                                                            {platformLabel[item.platform] ?? item.platform}
+                                                          <Typography
+                                                            variant="body2"
+                                                            color="text.secondary"
+                                                          >
+                                                            {platformLabel[item.platform] ??
+                                                              item.platform}
                                                           </Typography>
                                                         </TableCell>
                                                       </TableRow>
@@ -1458,10 +1520,16 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                   })}
                                                   <TableRow>
                                                     <TableCell colSpan={8} sx={{ py: 0.5 }}>
-                                                      <Typography variant="caption" color="text.secondary">
-                                                        当日合计：利润 {formatCNY(group.totalProfit)} · 手续费{' '}
+                                                      <Typography
+                                                        variant="caption"
+                                                        color="text.secondary"
+                                                      >
+                                                        当日合计：利润{' '}
+                                                        {formatCNY(group.totalProfit)} · 手续费{' '}
                                                         {formatCNY(group.totalFee)} · 净利{' '}
-                                                        {formatCNY(group.totalProfit - group.totalFee)}
+                                                        {formatCNY(
+                                                          group.totalProfit - group.totalFee,
+                                                        )}
                                                       </Typography>
                                                     </TableCell>
                                                   </TableRow>

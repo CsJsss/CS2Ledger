@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { type ColumnDef } from '@tanstack/react-table';
 import Table from '@mui/material/Table';
@@ -236,7 +236,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
     error,
     refetch,
   } = useDailyBuys(accountId, page + 1, PAGE_SIZE);
-  const { isExpanded, toggle } = useExpandableSet();
+  const { isExpanded, toggle, expandAll } = useExpandableSet();
 
   const groups = paginated?.groups ?? [];
   const totalGroups = paginated?.total ?? 0;
@@ -252,8 +252,12 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
       map.set(m, entry);
     }
     return map;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paginated?.groups]);
+
+  useEffect(() => {
+    expandAll(monthlyGroups.keys());
+  }, [monthlyGroups, expandAll]);
 
   if (isLoading) {
     return (
@@ -297,7 +301,7 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
               <Table size="small">
                 <TableBody>
                   {Array.from(monthlyGroups.entries()).map(([monthKey, mData]) => {
-                    const monthGroups = groups.filter(g => g.date.substring(0, 7) === monthKey);
+                    const monthGroups = groups.filter((g) => g.date.substring(0, 7) === monthKey);
                     const monthExpanded = isExpanded(monthKey);
                     const pl = mData.mv != null ? mData.mv - mData.cost : null;
                     const plRate = mData.cost > 0 && pl != null ? (pl / mData.cost) * 100 : null;
@@ -307,28 +311,50 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                       <React.Fragment key={monthKey}>
                         <TableRow
                           hover
-                          sx={{ bgcolor: 'background.paper', cursor: 'pointer', borderBottom: '2px solid', borderColor: 'divider' }}
+                          sx={{
+                            bgcolor: 'background.paper',
+                            cursor: 'pointer',
+                            borderBottom: '2px solid',
+                            borderColor: 'divider',
+                          }}
                           onClick={() => toggle(monthKey)}
                         >
                           <TableCell sx={{ py: 1, width: 40 }}>
                             <IconButton size="small">
-                              {monthExpanded ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowRightIcon fontSize="small" />}
+                              {monthExpanded ? (
+                                <KeyboardArrowDownIcon fontSize="small" />
+                              ) : (
+                                <KeyboardArrowRightIcon fontSize="small" />
+                              )}
                             </IconButton>
                           </TableCell>
                           <TableCell sx={{ py: 1 }} colSpan={2}>
                             <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                              <Typography variant="body2" fontWeight={600}>{mLabel}</Typography>
-                              <Typography variant="body2" color="text.secondary">{mData.count} 件</Typography>
+                              <Typography variant="body2" fontWeight={600}>
+                                {mLabel}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {mData.count} 件
+                              </Typography>
                               <Typography variant="body2">成本 {formatCNY(mData.cost)}</Typography>
                               {mData.mv != null && pl != null && (
                                 <>
-                                  <Typography variant="body2">市值 {formatCNY(mData.mv)}</Typography>
                                   <Typography variant="body2">
-                                    盈亏 <span style={{ color: plHexColor(pl), fontWeight: 600 }}>{formatCNY(pl)}</span>
+                                    市值 {formatCNY(mData.mv)}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    盈亏{' '}
+                                    <span style={{ color: plHexColor(pl), fontWeight: 600 }}>
+                                      {formatCNY(pl)}
+                                    </span>
                                   </Typography>
                                   {plRate != null && (
                                     <Typography variant="body2">
-                                      盈亏率 <span style={{ color: plHexColor(plRate) }}>{plRate >= 0 ? '+' : ''}{plRate.toFixed(1)}%</span>
+                                      盈亏率{' '}
+                                      <span style={{ color: plHexColor(plRate) }}>
+                                        {plRate >= 0 ? '+' : ''}
+                                        {plRate.toFixed(1)}%
+                                      </span>
                                     </Typography>
                                   )}
                                 </>
@@ -373,7 +399,14 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                           <Typography variant="body2" fontWeight={600}>
                                             买入 {group.totalCount} 件
                                           </Typography>
-                                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 0.5 }}>
+                                          <Box
+                                            sx={{
+                                              display: 'flex',
+                                              gap: 2,
+                                              flexWrap: 'wrap',
+                                              mt: 0.5,
+                                            }}
+                                          >
                                             <Typography variant="body2">
                                               成本 {formatCNY(group.totalCost)}
                                             </Typography>
@@ -383,7 +416,9 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                   市值{' '}
                                                   <span
                                                     style={{
-                                                      color: plHexColor(group.totalMarketValue - group.totalCost),
+                                                      color: plHexColor(
+                                                        group.totalMarketValue - group.totalCost,
+                                                      ),
                                                     }}
                                                   >
                                                     {formatCNY(group.totalMarketValue)}
@@ -393,11 +428,15 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                   浮动盈亏{' '}
                                                   <span
                                                     style={{
-                                                      color: plHexColor(group.totalMarketValue - group.totalCost),
+                                                      color: plHexColor(
+                                                        group.totalMarketValue - group.totalCost,
+                                                      ),
                                                       fontWeight: 600,
                                                     }}
                                                   >
-                                                    {formatCNY(group.totalMarketValue - group.totalCost)}
+                                                    {formatCNY(
+                                                      group.totalMarketValue - group.totalCost,
+                                                    )}
                                                   </span>
                                                 </Typography>
                                                 {group.totalCost > 0 && (
@@ -406,7 +445,8 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                     <span
                                                       style={{
                                                         color: plHexColor(
-                                                          ((group.totalMarketValue - group.totalCost) /
+                                                          ((group.totalMarketValue -
+                                                            group.totalCost) /
                                                             group.totalCost) *
                                                             100,
                                                         ),
@@ -419,7 +459,8 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                         ? '+'
                                                         : ''}
                                                       {(
-                                                        ((group.totalMarketValue - group.totalCost) /
+                                                        ((group.totalMarketValue -
+                                                          group.totalCost) /
                                                           group.totalCost) *
                                                         100
                                                       ).toFixed(1)}
@@ -439,7 +480,9 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                               <Table size="small">
                                                 <TableHead>
                                                   <TableRow>
-                                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                                    <TableCell
+                                                      sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                                    >
                                                       物品
                                                     </TableCell>
                                                     <TableCell
@@ -478,10 +521,14 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                     >
                                                       浮动率
                                                     </TableCell>
-                                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                                    <TableCell
+                                                      sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                                    >
                                                       平台
                                                     </TableCell>
-                                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                                                    <TableCell
+                                                      sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                                    >
                                                       状态
                                                     </TableCell>
                                                   </TableRow>
@@ -496,28 +543,45 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                     return (
                                                       <TableRow key={`${group.date}-${idx}`} hover>
                                                         <TableCell sx={{ py: 0.5 }}>
-                                                          <Typography variant="body2" fontWeight={500}>
+                                                          <Typography
+                                                            variant="body2"
+                                                            fontWeight={500}
+                                                          >
                                                             {item.itemName}
-                                                            {item.exterior ? ` (${item.exterior})` : ''}
+                                                            {item.exterior
+                                                              ? ` (${item.exterior})`
+                                                              : ''}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {item.quantity}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {formatCNY(item.buyPrice)}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {formatCNY(item.totalCost)}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }} align="right">
-                                                          <Typography variant="body2" className="mono-num">
+                                                          <Typography
+                                                            variant="body2"
+                                                            className="mono-num"
+                                                          >
                                                             {item.marketPrice != null
                                                               ? formatCNY(item.marketPrice)
                                                               : '--'}
@@ -564,14 +628,19 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                           )}
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }}>
-                                                          <Typography variant="body2" color="text.secondary">
-                                                            {platformLabel[item.platform] ?? item.platform}
+                                                          <Typography
+                                                            variant="body2"
+                                                            color="text.secondary"
+                                                          >
+                                                            {platformLabel[item.platform] ??
+                                                              item.platform}
                                                           </Typography>
                                                         </TableCell>
                                                         <TableCell sx={{ py: 0.5 }}>
                                                           <Chip
                                                             label={
-                                                              dailyBuyStatusLabel[item.status] ?? item.status
+                                                              dailyBuyStatusLabel[item.status] ??
+                                                              item.status
                                                             }
                                                             size="small"
                                                             color={dailyBuyStatusColor(item.status)}
@@ -583,22 +652,28 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                   })}
                                                   <TableRow>
                                                     <TableCell colSpan={9} sx={{ py: 0.5 }}>
-                                                      <Typography variant="caption" color="text.secondary">
+                                                      <Typography
+                                                        variant="caption"
+                                                        color="text.secondary"
+                                                      >
                                                         当日合计：成本 {formatCNY(group.totalCost)}
                                                         {group.totalMarketValue != null && (
                                                           <span>
                                                             {' '}
-                                                            · 当前市值 {formatCNY(group.totalMarketValue)} ·
+                                                            · 当前市值{' '}
+                                                            {formatCNY(group.totalMarketValue)} ·
                                                             浮动盈亏{' '}
                                                             <span
                                                               style={{
                                                                 color: plHexColor(
-                                                                  group.totalMarketValue - group.totalCost,
+                                                                  group.totalMarketValue -
+                                                                    group.totalCost,
                                                                 ),
                                                               }}
                                                             >
                                                               {formatCNY(
-                                                                group.totalMarketValue - group.totalCost,
+                                                                group.totalMarketValue -
+                                                                  group.totalCost,
                                                               )}
                                                             </span>
                                                           </span>
