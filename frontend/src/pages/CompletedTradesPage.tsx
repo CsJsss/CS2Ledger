@@ -1175,13 +1175,13 @@ function UnmatchedSellsContent({
 // ─── Daily Sells Tab Content ──────────────────────────────────────────────────
 
 const SKELETON_COUNT = 5;
+const PAGE_SIZE = 12;
 
 function DailySellsContent({ accountId }: { accountId: number | null }) {
   const [dismissed, setDismissed] = useState(false);
   const [jumpPage, setJumpPage] = useState('');
 
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 12;
 
   const {
     data: paginated,
@@ -1193,7 +1193,6 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
 
   const months = useMemo(() => paginated?.months ?? [], [paginated?.months]);
   const totalMonths = paginated?.total ?? 0;
-
 
   if (isLoading) {
     return (

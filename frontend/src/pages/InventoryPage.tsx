@@ -214,6 +214,7 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
 ];
 
 const SKELETON_COUNT = 5;
+const PAGE_SIZE = 12;
 
 const dailyBuyStatusLabel: Record<string, string> = {
   in_inventory: '持有中',
@@ -228,7 +229,6 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
   const [jumpPage, setJumpPage] = useState('');
 
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 12;
 
   const {
     data: paginated,
@@ -240,7 +240,6 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
 
   const months = useMemo(() => paginated?.months ?? [], [paginated?.months]);
   const totalMonths = paginated?.total ?? 0;
-
 
   if (isLoading) {
     return (
