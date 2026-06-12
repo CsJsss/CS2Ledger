@@ -34,7 +34,12 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Tooltip from '@mui/material/Tooltip';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import type { model } from '../lib/wails';
+import { useDailyBuys } from '../hooks/useDailyBuys';
+import { useExpandableSet } from '../hooks/useExpandableSet';
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
@@ -207,6 +212,262 @@ const groupedColumns: ColumnDef<GroupRowData>[] = [
   },
 ];
 
+const SKELETON_COUNT = 5;
+
+const dailyBuyStatusLabel: Record<string, string> = {
+  in_inventory: '持有中',
+  listed: '已上架',
+};
+
+const dailyBuyStatusColor = (status: string): 'success' | 'warning' | 'default' =>
+  status === 'listed' ? 'warning' : 'success';
+
+function DailyBuysContent({ accountId }: { accountId: number | null }) {
+  const [dismissed, setDismissed] = useState(false);
+  const { data: groups = [], isLoading, error, refetch } = useDailyBuys(accountId);
+  const { isExpanded, toggle } = useExpandableSet();
+
+  const totalCost = groups.reduce((s, g) => s + g.totalCost, 0);
+  const totalCount = groups.reduce((s, g) => s + g.totalCount, 0);
+
+  let totalMV: number | null = null;
+  let allHaveMV = true;
+  for (const g of groups) {
+    if (g.totalMarketValue != null) {
+      totalMV = (totalMV ?? 0) + g.totalMarketValue;
+    } else {
+      allHaveMV = false;
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Box mt={3}>
+        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+          <Skeleton key={i} variant="rectangular" height={48} sx={{ mb: 1, borderRadius: 1 }} />
+        ))}
+      </Box>
+    );
+  }
+
+  if (error && !dismissed) {
+    return (
+      <Box mt={3}>
+        <ErrorBanner
+          message={`加载每日买入数据失败: ${String(error)}`}
+          onRetry={() => { setDismissed(false); void refetch(); }}
+          onDismiss={() => setDismissed(true)}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box mt={3}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          共买入 <b>{totalCount}</b> 件 · 总成本 <b>{formatCNY(totalCost)}</b>
+          {allHaveMV && totalMV != null && (
+            <span>
+              {' '}· 当前市值{' '}
+              <b style={{ color: plHexColor(totalMV - totalCost) }}>
+                {formatCNY(totalMV)}
+              </b>
+            </span>
+          )}
+        </Typography>
+      </Box>
+
+      {groups.length === 0 && (
+        <EmptyState
+          icon={<ReceiptIcon sx={{ fontSize: 48 }} />}
+          title="暂无买入记录"
+          description="同步账户数据后将在此显示每日买入详情。"
+        />
+      )}
+
+      {groups.length > 0 && (
+        <Paper>
+          <TableContainer>
+            <Table size="small">
+              <TableBody>
+                {groups.map((group, gi) => {
+                  const expanded = isExpanded(group.date);
+                  const thisMonth = group.date.substring(0, 7);
+                  const prevMonth = gi > 0 ? groups[gi - 1].date.substring(0, 7) : thisMonth;
+
+                  return (
+                    <React.Fragment key={group.date}>
+                      {thisMonth !== prevMonth && (
+                        <TableRow>
+                          <TableCell colSpan={3} sx={{ py: 1, textAlign: 'center' }}>
+                            <Typography variant="caption" color="text.disabled">
+                              ── 更早的买入 ──
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow
+                        hover
+                        sx={{ bgcolor: 'background.default', cursor: 'pointer' }}
+                        onClick={() => toggle(group.date)}
+                      >
+                        <TableCell sx={{ py: 1, width: 40 }}>
+                          <IconButton size="small">
+                            {expanded ? (
+                              <KeyboardArrowDownIcon fontSize="small" />
+                            ) : (
+                              <KeyboardArrowRightIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </TableCell>
+                        <TableCell sx={{ py: 1, width: 80, textAlign: 'center' }}>
+                          <Typography variant="body2" fontWeight={700}>
+                            {group.date.length > 10
+                              ? group.date.substring(5)
+                              : new Date(group.date).getDate()}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {group.dayOfWeek}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ py: 1 }}>
+                          <Typography variant="body2" fontWeight={600}>
+                            买入 {group.totalCount} 件
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            成本 {formatCNY(group.totalCost)}
+                            {group.totalMarketValue != null && (
+                              <span>
+                                {' '}· 当前市值{' '}
+                                <span style={{ color: plHexColor(group.totalMarketValue - group.totalCost) }}>
+                                  {formatCNY(group.totalMarketValue)}
+                                </span>
+                              </span>
+                            )}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow sx={{ '& td': { border: 0 } }}>
+                        <TableCell colSpan={3} sx={{ p: 0 }}>
+                          <Collapse in={expanded}>
+                            <Box sx={{ mx: 2, my: 1 }}>
+                              <Table size="small">
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>物品</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">数量</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">买入价</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">总额</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">当前市价</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">浮动盈亏</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }} align="right">浮动率</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>平台</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem', py: 0.5 }}>状态</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {group.items.map((item, idx) => {
+                                    const upl = item.unrealizedPl;
+                                    const uplRate = item.totalCost > 0 && upl != null
+                                      ? (upl / item.totalCost) * 100
+                                      : null;
+                                    return (
+                                      <TableRow key={`${group.date}-${idx}`} hover>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" fontWeight={500}>
+                                            {item.itemName}
+                                            {item.exterior ? ` (${item.exterior})` : ''}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" className="mono-num">
+                                            {item.quantity}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(item.buyPrice)}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" className="mono-num">
+                                            {formatCNY(item.totalCost)}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          <Typography variant="body2" className="mono-num">
+                                            {item.marketPrice != null ? formatCNY(item.marketPrice) : '--'}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          {upl != null ? (
+                                            <Typography variant="body2" color={plHexColor(upl)} fontWeight={600} className="mono-num">
+                                              {formatCNY(upl)}
+                                            </Typography>
+                                          ) : (
+                                            <Typography variant="body2" color="text.secondary" className="mono-num">--</Typography>
+                                          )}
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }} align="right">
+                                          {uplRate != null ? (
+                                            <Typography variant="body2" color={plHexColor(uplRate)} className="mono-num">
+                                              {uplRate >= 0 ? '+' : ''}{uplRate.toFixed(1)}%
+                                            </Typography>
+                                          ) : (
+                                            <Typography variant="body2" color="text.secondary" className="mono-num">--</Typography>
+                                          )}
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Typography variant="body2" color="text.secondary">
+                                            {item.platform}
+                                          </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 0.5 }}>
+                                          <Chip
+                                            label={dailyBuyStatusLabel[item.status] ?? item.status}
+                                            size="small"
+                                            color={dailyBuyStatusColor(item.status)}
+                                            variant="outlined"
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                  <TableRow>
+                                    <TableCell colSpan={9} sx={{ py: 0.5 }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        当日合计：成本 {formatCNY(group.totalCost)}
+                                        {group.totalMarketValue != null && (
+                                          <span>
+                                            {' '}· 当前市值 {formatCNY(group.totalMarketValue)}{' '}
+                                            · 浮动盈亏{' '}
+                                            <span style={{ color: plHexColor(group.totalMarketValue - group.totalCost) }}>
+                                              {formatCNY(group.totalMarketValue - group.totalCost)}
+                                            </span>
+                                          </span>
+                                        )}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
+    </Box>
+  );
+}
+
 export default function InventoryPage() {
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
@@ -245,6 +506,8 @@ export default function InventoryPage() {
       result = result.filter((g) => g.itemName.toLowerCase().includes(globalFilter.toLowerCase()));
     return result;
   }, [groups, globalFilter]);
+
+  const [tab, setTab] = useState<'list' | 'dailyBuy'>('list');
 
   const [expandedNames, setExpandedNames] = useState<Set<string>>(new Set());
 
@@ -294,7 +557,14 @@ export default function InventoryPage() {
         </Box>
       </Box>
 
-      {!selectedAccountId && groups.length === 0 && !isLoading && (
+      <Tabs value={tab} onChange={(_, v) => setTab(v as 'list' | 'dailyBuy')} sx={{ mb: 1 }}>
+        <Tab label="持仓列表" value="list" />
+        <Tab label="每日买入" value="dailyBuy" />
+      </Tabs>
+
+      {tab === 'dailyBuy' && <DailyBuysContent accountId={selectedAccountId} />}
+
+      {tab === 'list' && !selectedAccountId && groups.length === 0 && !isLoading && (
         <Box mt={3}>
           <EmptyState
             icon={<AccountBalanceIcon sx={{ fontSize: 48 }} />}
@@ -310,7 +580,7 @@ export default function InventoryPage() {
         </Box>
       )}
 
-      {isLoading && (
+      {tab === 'list' && isLoading && (
         <Box mt={3}>
           {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} variant="rectangular" height={48} sx={{ mb: 1, borderRadius: 1 }} />
@@ -318,7 +588,7 @@ export default function InventoryPage() {
         </Box>
       )}
 
-      {error && !dismissed && (
+      {tab === 'list' && error && !dismissed && (
         <Box mt={3}>
           <ErrorBanner
             message={`加载持仓数据失败: ${String(error)}`}
@@ -331,7 +601,7 @@ export default function InventoryPage() {
         </Box>
       )}
 
-      {!isLoading && !error && selectedAccountId && groups.length === 0 && (
+      {tab === 'list' && !isLoading && !error && selectedAccountId && groups.length === 0 && (
         <Box mt={3}>
           <EmptyState
             icon={<InventoryIcon sx={{ fontSize: 48 }} />}
@@ -341,7 +611,7 @@ export default function InventoryPage() {
         </Box>
       )}
 
-      {!isLoading && !error && groups.length > 0 && filteredGroups.length === 0 && (
+      {tab === 'list' && !isLoading && !error && groups.length > 0 && filteredGroups.length === 0 && (
         <Box mt={3}>
           <EmptyState
             icon={<SearchOffIcon sx={{ fontSize: 48 }} />}
@@ -351,7 +621,7 @@ export default function InventoryPage() {
         </Box>
       )}
 
-      {!isLoading && !error && filteredGroups.length > 0 && (
+      {tab === 'list' && !isLoading && !error && filteredGroups.length > 0 && (
         <Box mt={3}>
           <Paper>
             <TableContainer>
