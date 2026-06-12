@@ -1376,6 +1376,25 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                 {formatCNY(group.totalProfit - group.totalFee)}
                                               </span>
                                             </Typography>
+                                            {(() => {
+                                              const buyCost = group.items.reduce(
+                                                (s, i) => s + i.buyPrice * i.quantity,
+                                                0,
+                                              );
+                                              const rate =
+                                                buyCost > 0
+                                                  ? (group.totalProfit / buyCost) * 100
+                                                  : 0;
+                                              return (
+                                                <Typography variant="body2">
+                                                  盈亏率{' '}
+                                                  <span style={{ color: plHexColor(rate) }}>
+                                                    {rate >= 0 ? '+' : ''}
+                                                    {rate.toFixed(1)}%
+                                                  </span>
+                                                </Typography>
+                                              );
+                                            })()}
                                           </Box>
                                         </TableCell>
                                       </TableRow>
