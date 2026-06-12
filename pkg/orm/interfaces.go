@@ -46,6 +46,7 @@ type InventoryInterface interface {
 	FindInventoryByAssetID(accountID uint, assetID string) (*model.InventoryItem, error)
 	FindInventoryGroupKeys(accountID uint, status, weaponType string, offset, limit int, sortBy, sortDir string) ([]InventoryGroupKey, int64, error)
 	FindInventoryByGroupKeys(accountID uint, keys []InventoryGroupKey) ([]model.InventoryItem, error)
+	FindDailyBuys(accountID uint) ([]DailyBuyRow, error)
 }
 
 type PnlInterface interface {
