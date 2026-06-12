@@ -111,6 +111,10 @@ func (a *App) GetItemDetail(accountID uint, assetID string) (*inventory.ItemDeta
 	return a.svc.Inventory().GetItemDetail(accountID, assetID)
 }
 
+func (a *App) GetDailyBuys(accountID uint) ([]inventory.DailyBuyGroup, error) {
+	return a.svc.Inventory().ListDailyBuys(accountID)
+}
+
 func (a *App) GetCompletedTrades(accountID uint, page, pageSize int, sortBy, sortDir string) (*trade.PaginatedGroups, error) {
 	return a.svc.Trade().ListCompletedTradeGroups(accountID, page, pageSize, sortBy, sortDir)
 }
@@ -130,6 +134,10 @@ func (a *App) GetCompletedTradesSummary(accountID uint) (*trade.CompletedTradesS
 
 func (a *App) GetUnmatchedSells(accountID uint) ([]model.TradeRecord, error) {
 	return a.svc.Trade().ListUnmatchedSells(accountID)
+}
+
+func (a *App) GetDailySells(accountID uint, year, month int) ([]trade.DailySellGroup, error) {
+	return a.svc.Trade().ListDailySells(accountID, year, month)
 }
 
 func (a *App) GetPnlSummary(accountID uint) (*pnl.PnlSummaryView, error) {
