@@ -631,37 +631,6 @@ function DailyBuysContent({ accountId }: { accountId: number | null }) {
                                                       </TableRow>
                                                     );
                                                   })}
-                                                  <TableRow>
-                                                    <TableCell colSpan={9} sx={{ py: 0.5 }}>
-                                                      <Typography
-                                                        variant="caption"
-                                                        color="text.secondary"
-                                                      >
-                                                        当日合计：成本 {formatCNY(group.totalCost)}
-                                                        {group.totalMarketValue != null && (
-                                                          <span>
-                                                            {' '}
-                                                            · 当前市值{' '}
-                                                            {formatCNY(group.totalMarketValue)} ·
-                                                            浮动盈亏{' '}
-                                                            <span
-                                                              style={{
-                                                                color: plHexColor(
-                                                                  group.totalMarketValue -
-                                                                    group.totalCost,
-                                                                ),
-                                                              }}
-                                                            >
-                                                              {formatCNY(
-                                                                group.totalMarketValue -
-                                                                  group.totalCost,
-                                                              )}
-                                                            </span>
-                                                          </span>
-                                                        )}
-                                                      </Typography>
-                                                    </TableCell>
-                                                  </TableRow>
                                                 </TableBody>
                                               </Table>
                                             </Box>

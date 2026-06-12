@@ -1520,21 +1520,6 @@ function DailySellsContent({ accountId }: { accountId: number | null }) {
                                                       </TableRow>
                                                     );
                                                   })}
-                                                  <TableRow>
-                                                    <TableCell colSpan={8} sx={{ py: 0.5 }}>
-                                                      <Typography
-                                                        variant="caption"
-                                                        color="text.secondary"
-                                                      >
-                                                        当日合计：利润{' '}
-                                                        {formatCNY(group.totalProfit)} · 手续费{' '}
-                                                        {formatCNY(group.totalFee)} · 净利{' '}
-                                                        {formatCNY(
-                                                          group.totalProfit - group.totalFee,
-                                                        )}
-                                                      </Typography>
-                                                    </TableCell>
-                                                  </TableRow>
                                                 </TableBody>
                                               </Table>
                                             </Box>
